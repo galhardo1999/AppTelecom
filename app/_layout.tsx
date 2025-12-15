@@ -1,8 +1,8 @@
-import { Slot, Stack, useRouter, useSegments } from 'expo-router';
-import { AuthProvider, useAuth } from '../src/context/AuthContext';
-import '../global.css'; // Import NativeWind global styles
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
+import '../global.css'; // Import NativeWind global styles
+import { AuthProvider, useAuth } from '../src/context/AuthContext';
 
 // Separate component to handle navigation logic inside Provider
 function RootNavigator() {
@@ -26,8 +26,17 @@ function RootNavigator() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-100">
-        <ActivityIndicator size="large" color="#0284c7" />
+      <View className="flex-1 justify-center items-center bg-white">
+        <View className="flex-1 justify-center items-center">
+          <Image
+            source={require('../assets/logo.png')}
+            style={{ width: 200, height: 100 }}
+            resizeMode="contain"
+          />
+        </View>
+        <View className="mb-10">
+          <ActivityIndicator size="large" color="#7c3aed" />
+        </View>
       </View>
     );
   }
