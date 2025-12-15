@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 
 export default function DashboardLayout() {
@@ -25,21 +25,14 @@ export default function DashboardLayout() {
             <Tabs.Screen
                 name="index"
                 options={{
-                    title: 'Início',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="home-outline" size={size} color={color} />
-                    ),
-                }}
-            />
-            <Tabs.Screen
-                name="invoices"
-                options={{
                     title: 'Faturas',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="receipt-outline" size={size} color={color} />
                     ),
                 }}
             />
+            {/* Hidden route for backup if needed, but we don't expose it in tabs */}
+
             <Tabs.Screen
                 name="settings"
                 options={{
@@ -47,6 +40,14 @@ export default function DashboardLayout() {
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="settings-outline" size={size} color={color} />
                     ),
+                }}
+            />
+
+            {/* Ignore file route if present */}
+            <Tabs.Screen
+                name="home_backup"
+                options={{
+                    href: null,
                 }}
             />
         </Tabs>

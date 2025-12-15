@@ -61,6 +61,29 @@ export const ixcApi = {
             console.error('Error fetching client:', error);
             throw error;
         }
+    },
+    // Fetch open invoices for a client
+    getOpenInvoices: async (clientId: string) => {
+        try {
+            const response = await api.post('/fn_areceber', {
+                qtype: 'fn_areceber.id_cliente',
+                query: clientId,
+                oper: '=',
+                page: '1',
+                rp: '50', // Fetch up to 50 open invoices
+                sortname: 'fn_areceber.data_vencimento',
+                sortorder: 'asc',
+                grid_param: JSON.stringify([{ "TB": "fn_areceber.status", "OP": "=", "P": "A" }]) // Filter by Status = 'A' (Aberto)
+            });
+
+            if (response.data && response.data.registros) {
+                return response.data.registros;
+            }
+            return [];
+        } catch (error) {
+            console.error('Error fetching invoices:', error);
+            throw error;
+        }
     }
 };
 

@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { useAuth } from '../../src/context/AuthContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function Dashboard() {
     const { user, signOut } = useAuth();
@@ -86,15 +87,19 @@ export default function Dashboard() {
                     </View>
 
                     {/* Card Info 3 */}
-                    <View className="w-[48%] bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4 h-40 justify-between">
-                        <View className="bg-emerald-50 w-12 h-12 rounded-2xl items-center justify-center">
-                            <Ionicons name="receipt-outline" size={24} color="#10b981" />
-                        </View>
-                        <View>
-                            <Text className="text-slate-400 text-xs font-semibold uppercase">Faturas</Text>
-                            <Text className="text-slate-800 font-bold text-xl">Em dia</Text>
-                        </View>
-                    </View>
+                    <Link href="/dashboard/invoices" asChild>
+                        <TouchableOpacity
+                            className="w-[48%] bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4 h-40 justify-between active:bg-slate-50"
+                        >
+                            <View className="bg-emerald-50 w-12 h-12 rounded-2xl items-center justify-center">
+                                <Ionicons name="receipt-outline" size={24} color="#10b981" />
+                            </View>
+                            <View>
+                                <Text className="text-slate-400 text-xs font-semibold uppercase">Faturas</Text>
+                                <Text className="text-slate-800 font-bold text-xl">Em dia</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </Link>
 
                     {/* Card Info 4 */}
                     <View className="w-[48%] bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-4 h-40 justify-between">
