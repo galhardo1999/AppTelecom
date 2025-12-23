@@ -43,6 +43,20 @@ export default function DashboardLayout() {
                 }}
             />
 
+            {/* Hidden routes - accessible via push navigation */}
+            <Tabs.Screen
+                name="contract"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="consumption"
+                options={{
+                    href: null,
+                }}
+            />
+
             {/* Ignore file route if present */}
             <Tabs.Screen
                 name="home_backup"

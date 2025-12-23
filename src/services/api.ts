@@ -84,6 +84,52 @@ export const ixcApi = {
             console.error('Error fetching invoices:', error);
             throw error;
         }
+    },
+
+    // Fetch client contracts
+    getClientContracts: async (clientId: string) => {
+        try {
+            const response = await api.post('/cliente_contrato', {
+                qtype: 'cliente_contrato.id_cliente',
+                query: clientId,
+                oper: '=',
+                page: '1',
+                rp: '10',
+                sortname: 'cliente_contrato.id',
+                sortorder: 'desc'
+            });
+
+            if (response.data && response.data.registros) {
+                return response.data.registros;
+            }
+            return [];
+        } catch (error) {
+            console.error('Error fetching contracts:', error);
+            throw error;
+        }
+    },
+
+    // Fetch internet usage data (radusuario)
+    getInternetUsage: async (clientId: string) => {
+        try {
+            const response = await api.post('/radusuario', {
+                qtype: 'radusuario.id_cliente',
+                query: clientId,
+                oper: '=',
+                page: '1',
+                rp: '10',
+                sortname: 'radusuario.id',
+                sortorder: 'desc'
+            });
+
+            if (response.data && response.data.registros) {
+                return response.data.registros;
+            }
+            return [];
+        } catch (error) {
+            console.error('Error fetching internet usage:', error);
+            throw error;
+        }
     }
 };
 

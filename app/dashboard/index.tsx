@@ -50,17 +50,30 @@ export default function InvoicesScreen() {
         }
     };
 
-    const handleCopyBarcode = () => {
+    const showToast = (message: string) => {
+        if (Platform.OS === 'android') {
+            ToastAndroid.show(message, ToastAndroid.SHORT);
+        } else {
+            Alert.alert('', message);
+        }
+    };
+
+    const handleCopyBarcode = async () => {
         if (selectedInvoice?.linha_digitavel) {
-            // In a real app, use Clipboard.setStringAsync(selectedInvoice.linha_digitavel);
-            Alert.alert('Código de Barras', selectedInvoice.linha_digitavel);
+            await Clipboard.setStringAsync(selectedInvoice.linha_digitavel);
+            showToast('Código de barras copiado!');
         } else {
             Alert.alert('Indisponível', 'Linha digitável não encontrada para esta fatura.');
         }
     };
 
-    const handlePix = () => {
-        Alert.alert('PIX', 'Funcionalidade em breve.');
+    const handlePix = async () => {
+        if (selectedInvoice?.pix_copia_cola) {
+            await Clipboard.setStringAsync(selectedInvoice.pix_copia_cola);
+            showToast('Código PIX copiado!');
+        } else {
+            Alert.alert('Indisponível', 'Código PIX não encontrado para esta fatura.');
+        }
     };
 
     const formatCurrency = (val: string) => {

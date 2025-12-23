@@ -7,4 +7,6 @@ export interface Invoice {
     status: string; // 'A' for Aberto, 'P' for Pago, etc.
     linha_digitavel?: string; // For Boleto
     link_boleto?: string; // URL to PDF
+    pix_copia_cola?: string; // PIX copy-paste code
+    gateway_link?: string; // Payment gateway link
 }
