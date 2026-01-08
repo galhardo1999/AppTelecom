@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,23 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { ixcApi } from '../../src/services/api';
-
-interface Contract {
-    id: string;
-    id_cliente: string;
-    contrato: string;
-    status: string;
-    status_internet: string;
-    data_cadastro: string;
-    data_ativacao: string;
-    data_cancelamento: string;
-    download: string;
-    upload: string;
-    valor: string;
-    forma_pagamento: string;
-    id_plano: string;
-    plano_nome?: string;
-}
+import { Contract } from '../../src/types/ixc';
+import { formatCurrency, formatDateFull } from '../../src/utils/formatters';
 
 export default function ContractScreen() {
     const router = useRouter();
@@ -53,18 +38,6 @@ export default function ContractScreen() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const formatCurrency = (val: string) => {
-        if (!val) return 'R$ 0,00';
-        const num = parseFloat(val);
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
-    };
-
-    const formatDate = (dateString: string) => {
-        if (!dateString) return '-';
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}/${year}`;
     };
 
     const getStatusColor = (status: string) => {
@@ -150,7 +123,7 @@ export default function ContractScreen() {
                                         <View className="items-end">
                                             <Text className="text-slate-500 text-xs">Valor Mensal</Text>
                                             <Text className="text-purple-600 text-xl font-bold">
-                                                {formatCurrency(contract.valor)}
+                                                {formatCurrency((parseFloat(contract.valor_contrato || '0') > 0 ? contract.valor_contrato : contract.valor) ?? '0')}
                                             </Text>
                                         </View>
                                     </View>
@@ -190,7 +163,7 @@ export default function ContractScreen() {
                                             <View className="flex-1">
                                                 <Text className="text-slate-500 text-xs mb-1">Data de Ativação</Text>
                                                 <Text className="text-slate-800 font-medium">
-                                                    {formatDate(contract.data_ativacao)}
+                                                    {formatDateFull(contract.data_ativacao)}
                                                 </Text>
                                             </View>
                                             <View className="flex-1">

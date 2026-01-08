@@ -1,3 +1,4 @@
+
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
@@ -7,63 +8,75 @@ export default function DashboardLayout() {
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: '#6d28d9',
+                tabBarActiveTintColor: '#7c3aed',
                 tabBarInactiveTintColor: '#94a3b8',
                 tabBarStyle: {
                     backgroundColor: '#ffffff',
                     borderTopColor: '#e2e8f0',
-                    height: Platform.OS === 'ios' ? 100 : 75,
-                    paddingBottom: Platform.OS === 'ios' ? 30 : 12,
-                    paddingTop: 12,
+                    height: Platform.OS === 'ios' ? 90 : 70,
+                    paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+                    paddingTop: 10,
                 },
                 tabBarLabelStyle: {
                     fontWeight: '500',
-                    fontSize: 12,
+                    fontSize: 10,
+                    marginTop: 2,
                 },
             }}
         >
             <Tabs.Screen
-                name="index"
+                name="planos"
+                options={{
+                    title: 'Planos',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="list-outline" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="faturas"
                 options={{
                     title: 'Faturas',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="receipt-outline" size={size} color={color} />
+                        <Ionicons name="barcode-outline" size={size} color={color} />
                     ),
                 }}
             />
-            {/* Hidden route for backup if needed, but we don't expose it in tabs */}
-
             <Tabs.Screen
-                name="settings"
+                name="index"
                 options={{
-                    title: 'Configurações',
+                    title: 'Início',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="settings-outline" size={size} color={color} />
+                        <Ionicons name="home" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="suporte"
+                options={{
+                    title: 'Suporte',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="headset-outline" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="perfil"
+                options={{
+                    title: 'Perfil',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="person-outline" size={size} color={color} />
                     ),
                 }}
             />
 
-            {/* Hidden routes - accessible via push navigation */}
-            <Tabs.Screen
-                name="contract"
-                options={{
-                    href: null,
-                }}
-            />
-            <Tabs.Screen
-                name="consumption"
-                options={{
-                    href: null,
-                }}
-            />
+            {/* Hidden routes */}
+            <Tabs.Screen name="contract" options={{ href: null }} />
+            <Tabs.Screen name="consumption" options={{ href: null }} />
 
-            {/* Ignore file route if present */}
-            <Tabs.Screen
-                name="home_backup"
-                options={{
-                    href: null,
-                }}
-            />
+            {/* If settings still refers to the file name, it is now perfil. 
+                If there are any other files, ensure they are hidden if not needed in tabs.
+            */}
         </Tabs>
     );
 }

@@ -10,3 +10,43 @@ export interface Invoice {
     pix_copia_cola?: string; // PIX copy-paste code
     gateway_link?: string; // Payment gateway link
 }
+
+export interface Contract {
+    id: string;
+    id_cliente: string;
+    contrato: string;
+    status: string;
+    status_internet: string;
+    data_cadastro: string;
+    data_ativacao: string;
+    data_cancelamento: string;
+    download: string;
+    upload: string;
+    valor: string;
+    forma_pagamento: string;
+    id_plano: string;
+    plano?: string;
+    endereco?: string;
+    plano_nome?: string;
+    valor_contrato?: string;
+}
+
+export interface RadUsuario {
+    id: string;
+    id_cliente: string;
+    login: string;
+    senha: string;
+    ip: string;
+    mac: string;
+    online: string;
+    rx: string;
+    tx: string;
+    onu_rx: string;
+    onu_tx: string;
+    olt_rx: string;
+    olt_tx: string;
+    tempo_online: string;
+    ultima_conexao: string;
+    id_conexao: string;
+    status: string;
+}

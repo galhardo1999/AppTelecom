@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -13,26 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { ixcApi } from '../../src/services/api';
-
-interface RadUsuario {
-    id: string;
-    id_cliente: string;
-    login: string;
-    senha: string;
-    ip: string;
-    mac: string;
-    online: string;
-    rx: string;
-    tx: string;
-    onu_rx: string;
-    onu_tx: string;
-    olt_rx: string;
-    olt_tx: string;
-    tempo_online: string;
-    ultima_conexao: string;
-    id_conexao: string;
-    status: string;
-}
+import { RadUsuario } from '../../src/types/ixc';
+import { formatBytes } from '../../src/utils/formatters';
 
 export default function ConsumptionScreen() {
     const router = useRouter();
@@ -56,16 +38,6 @@ export default function ConsumptionScreen() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const formatBytes = (bytes: string) => {
-        if (!bytes) return '0 B';
-        const b = parseFloat(bytes);
-        if (b === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(b) / Math.log(k));
-        return parseFloat((b / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
     const getStatusInfo = (online: string, status: string) => {

@@ -130,6 +130,88 @@ export const ixcApi = {
             console.error('Error fetching internet usage:', error);
             throw error;
         }
+    },
+
+    // Fetch PIX code for an invoice
+    getPixCode: async (invoiceId: string): Promise<string | null> => {
+        try {
+            const response = await api.post('/get_pix', {
+                id_areceber: invoiceId
+            });
+
+            // The API should return the PIX code in the response
+            if (response.data) {
+                // Check different possible response formats
+                if (typeof response.data === 'string') {
+                    return response.data;
+                }
+                if (response.data.pix_copia_cola) {
+                    return response.data.pix_copia_cola;
+                }
+                if (response.data.qrcode) {
+                    return response.data.qrcode;
+                }
+                if (response.data.codigo) {
+                    return response.data.codigo;
+                }
+                // If response has a registros array
+                if (response.data.registros && response.data.registros[0]) {
+                    const registro = response.data.registros[0];
+                    return registro.pix_copia_cola || registro.qrcode || registro.codigo || null;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching PIX code:', error);
+            throw error;
+        }
+    },
+
+    // Fetch Boleto PDF in base64 format
+    getBoleto: async (boletoId: string): Promise<string | null> => {
+        try {
+            console.log('Fetching boleto for ID:', boletoId);
+            // IXC often uses POST even for retrieval. Trying POST to be consistent with getPixCode.
+            // Also sending params in body.
+            const response = await api.post('/get_boleto', {
+                boletos: boletoId,
+                juro: 'N',
+                multa: 'N',
+                atualiza_boleto: 'N',
+                tipo_boleto: 'arquivo',
+                base64: 'S'
+            });
+
+            console.log('getBoleto response:', JSON.stringify(response.data).substring(0, 200)); // Log first 200 chars
+
+            // The API returns the PDF in base64 format
+            if (response.data) {
+                // Check different possible response formats
+                if (typeof response.data === 'string') {
+                    // Sometimes it returns just the base64 string
+                    // Verify if it looks like base64 (starts with JVBER for PDF usually)
+                    if (response.data.startsWith('JVBER')) return response.data;
+                    // Or check specific header
+                }
+                if (response.data.base64) {
+                    return response.data.base64;
+                }
+                if (response.data.arquivo) {
+                    return response.data.arquivo;
+                }
+                if (response.data.pdf) {
+                    return response.data.pdf;
+                }
+                // If response has boleto data
+                if (response.data.boleto) {
+                    return response.data.boleto;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching boleto PDF:', error);
+            throw error;
+        }
     }
 };
 

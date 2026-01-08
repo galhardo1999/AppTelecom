@@ -1,294 +1,97 @@
+
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import { useEffect, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PromotionalModal } from '../../src/components/PromotionalModal';
 import { useAuth } from '../../src/context/AuthContext';
-import { ixcApi } from '../../src/services/api';
-import { Invoice } from '../../src/types/ixc';
+import { getFirstName } from '../../src/utils/formatters';
 
-export default function InvoicesScreen() {
+export default function HomeScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-    const [showPicker, setShowPicker] = useState(false);
-
-    // Get first name for greeting
-    const firstName = user?.razao ? user.razao.split(' ')[0] : 'Cliente';
+    const firstName = getFirstName(user?.razao);
+    const [showPromo, setShowPromo] = useState(false);
 
     useEffect(() => {
-        loadInvoices();
+        // Show promo after a short delay to simulate "check" or animation
+        const timer = setTimeout(() => {
+            setShowPromo(true);
+        }, 1000);
+        return () => clearTimeout(timer);
     }, []);
 
-    const loadInvoices = async () => {
-        if (!user?.id) return;
-        try {
-            setLoading(true);
-            const data = await ixcApi.getOpenInvoices(user.id);
-            setInvoices(data);
-            // Default to the OLDEST invoice (first in the list if sorted by asc date, which API does)
-            if (data.length > 0) {
-                setSelectedInvoice(data[0]);
-            }
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Erro', 'Não foi possível carregar as faturas.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const showToast = (message: string) => {
-        if (Platform.OS === 'android') {
-            ToastAndroid.show(message, ToastAndroid.SHORT);
-        } else {
-            Alert.alert('', message);
-        }
-    };
-
-    const handleCopyBarcode = async () => {
-        if (selectedInvoice?.linha_digitavel) {
-            await Clipboard.setStringAsync(selectedInvoice.linha_digitavel);
-            showToast('Código de barras copiado!');
-        } else {
-            Alert.alert('Indisponível', 'Linha digitável não encontrada para esta fatura.');
-        }
-    };
-
-    const handlePix = async () => {
-        if (selectedInvoice?.pix_copia_cola) {
-            await Clipboard.setStringAsync(selectedInvoice.pix_copia_cola);
-            showToast('Código PIX copiado!');
-        } else {
-            Alert.alert('Indisponível', 'Código PIX não encontrado para esta fatura.');
-        }
-    };
-
-    const formatCurrency = (val: string) => {
-        const num = parseFloat(val);
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
-    };
-
-    const formatDate = (dateString: string) => {
-        if (!dateString) return '';
-        const [year, month, day] = dateString.split('-');
-        return `${day}/${month}`; // DD/MM
-    };
-
-    const getMonthName = (dateString: string) => {
-        if (!dateString) return '';
-        const [year, month] = dateString.split('-');
-        const months = [
-            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-        ];
-        return months[parseInt(month) - 1];
-    };
-
-    const getMonthYear = (dateString: string) => {
-        if (!dateString) return '';
-        const [year, month] = dateString.split('-');
-        const monthName = getMonthName(dateString);
-        return `${monthName}/${year}`;
-    };
+    const quickActions = [
+        { title: 'Faturas', icon: 'receipt-outline' as const, color: '#a855f7', route: '/dashboard/faturas' },
+        { title: 'Planos', icon: 'list-outline' as const, color: '#3b82f6', route: '/dashboard/planos' },
+        { title: 'Suporte', icon: 'headset-outline' as const, color: '#22c55e', route: '/dashboard/suporte' },
+        { title: 'Consumo', icon: 'speedometer-outline' as const, color: '#f59e0b', route: '/dashboard/consumption' },
+    ];
 
     return (
         <View className="flex-1 bg-slate-50">
-            {/* Top Section with Gradient - VERO Style */}
-            <View className="h-[60%] w-full relative">
+            <PromotionalModal visible={showPromo} onClose={() => setShowPromo(false)} />
+            <View className="h-[35%] w-full relative">
                 <LinearGradient
-                    colors={['#2e1065', '#9333ea', '#f97316']} // Deep Purple -> Violet -> Orange
+                    colors={['#a855f7', '#7e22ce', '#3b0764']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     className="absolute w-full h-full rounded-b-[40px]"
                 />
-
                 <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
-                    {/* Header: Logo + Actions */}
-                    <View className="flex-row justify-between items-center py-2">
+                    <View className="flex-row justify-between items-center py-2 mt-2">
                         <View className="bg-white/20 p-2 rounded-xl">
-                            <Image
-                                source={require('../../assets/logo.png')}
-                                style={{ width: 80, height: 30 }}
-                                resizeMode="contain"
-                                tintColor="white"
-                            />
+                            <Ionicons name="wifi" size={24} color="white" />
                         </View>
-                        <View className="flex-row space-x-4">
-                            <TouchableOpacity>
-                                <Ionicons name="notifications-outline" size={24} color="white" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => router.push('/dashboard/settings')}>
-                                <Ionicons name="settings-outline" size={24} color="white" />
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity onPress={() => router.push('/dashboard/perfil')}>
+                            <Ionicons name="person-circle-outline" size={32} color="white" />
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Greeting */}
-                    <View className="mt-6 mb-4">
-                        <Text className="text-white text-lg font-medium">Olá, {firstName}</Text>
+                    <View className="mt-6">
+                        <Text className="text-white/80 text-lg">Bem-vindo(a) de volta,</Text>
+                        <Text className="text-white text-3xl font-bold">{firstName}</Text>
                     </View>
-
-                    {/* Main Content Area */}
-                    {loading ? (
-                        <View className="flex-1 justify-center items-center">
-                            <ActivityIndicator color="white" size="large" />
-                        </View>
-                    ) : selectedInvoice ? (
-                        <View className="flex-1 relative">
-                            {/* Selector */}
-                            <Text className="text-white/80 text-sm mb-2">Selecionar Fatura:</Text>
-                            <TouchableOpacity
-                                onPress={() => setShowPicker(true)}
-                                className="bg-white rounded-xl flex-row items-center justify-between px-4 py-3 mb-6 shadow-lg"
-                            >
-                                <View className="flex-row items-center space-x-2">
-                                    <Ionicons name="wifi" size={20} color="#7c3aed" />
-                                    <Text className="text-slate-700 font-semibold text-base">
-                                        {getMonthYear(selectedInvoice.data_vencimento)}
-                                    </Text>
-                                </View>
-                                <Ionicons name="chevron-down" size={20} color="#cbd5e1" />
-                            </TouchableOpacity>
-
-                            {/* Details Information */}
-                            <View className="flex-row items-center space-x-2 mb-2">
-                                <Ionicons name="location-outline" size={16} color="white" />
-                                <Text className="text-white font-medium text-xs uppercase tracking-wide">
-                                    {user?.endereco || 'Endereço Principal'}
-                                </Text>
-                            </View>
-
-                            {/* Large Value Display */}
-                            <View className="mt-2">
-                                <Text className="text-white text-5xl font-bold tracking-tighter">
-                                    {formatCurrency(selectedInvoice.valor)}
-                                </Text>
-                                <View className="flex-row justify-between items-center mt-2 pr-4">
-                                    <Text className="text-white/90 text-base font-medium">Fatura Aberta</Text>
-                                    <Text className="text-white/80 text-sm">
-                                        Vencimento: {formatDate(selectedInvoice.data_vencimento)}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            {/* Watermark Month Name */}
-                            <View className="absolute bottom-10 right-0 w-[150%] opacity-10 pointer-events-none z-0">
-                                <Text className="text-white text-6xl font-bold uppercase text-right pr-6" numberOfLines={1}>
-                                    {getMonthName(selectedInvoice.data_vencimento)}
-                                </Text>
-                            </View>
-                        </View>
-                    ) : (
-                        <View className="flex-1 justify-center items-center">
-                            <Ionicons name="checkmark-circle-outline" size={64} color="white" />
-                            <Text className="text-white text-lg font-bold mt-4">Tudo em dia!</Text>
-                            <Text className="text-white/70 text-center mt-2">Você não possui faturas abertas.</Text>
-                        </View>
-                    )}
                 </SafeAreaView>
             </View>
 
-            {/* Bottom Actions Section */}
-            <View className="flex-1 -mt-16 px-6 pb-6">
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                    {/* Copy Barcode Button */}
-                    <TouchableOpacity
-                        className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
-                        onPress={handleCopyBarcode}
-                        disabled={!selectedInvoice}
-                    >
-                        <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
-                            <Ionicons name="barcode-outline" size={24} color="#64748b" />
-                        </View>
-                        <Text className="text-slate-700 font-bold text-lg flex-1">Copiar Código de Barras</Text>
-                    </TouchableOpacity>
+            <View className="flex-1 -mt-16 px-6">
+                {/* Quick Actions Grid */}
+                <View className="flex-row flex-wrap justify-between">
+                    {quickActions.map((action, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            className="bg-white w-[48%] p-4 rounded-2xl shadow-sm mb-4 items-center justify-center h-32"
+                            onPress={() => router.push(action.route as any)}
+                        >
+                            <View className="w-12 h-12 rounded-full items-center justify-center mb-3" style={{ backgroundColor: action.color + '20' }}>
+                                <Ionicons name={action.icon} size={28} color={action.color} />
+                            </View>
+                            <Text className="text-slate-700 font-bold text-base">{action.title}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
 
-                    {/* Second Copy Button */}
-                    <TouchableOpacity
-                        className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
-                        onPress={() => Alert.alert('PDF', 'Download do PDF iniciado...')}
-                        disabled={!selectedInvoice}
-                    >
-                        <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
-                            <Ionicons name="document-text-outline" size={24} color="#64748b" />
-                        </View>
-                        <Text className="text-slate-700 font-bold text-lg flex-1">Segunda via de Fatura</Text>
-                    </TouchableOpacity>
-
-                    {/* Pix Button */}
-                    <TouchableOpacity
-                        className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
-                        onPress={handlePix}
-                        disabled={!selectedInvoice}
-                    >
-                        <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
-                            <Ionicons name="qr-code-outline" size={24} color="#64748b" />
-                        </View>
-                        <Text className="text-slate-700 font-bold text-lg flex-1">Copiar Código PIX</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </View>
-
-            {/* Custom Modal for Invoice Selection */}
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={showPicker}
-                onRequestClose={() => setShowPicker(false)}
-            >
-                <TouchableOpacity
-                    className="flex-1 bg-black/50 justify-end"
-                    activeOpacity={1}
-                    onPress={() => setShowPicker(false)}
-                >
-                    <View className="bg-white rounded-t-3xl p-6 h-[50%]">
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-slate-800">Selecionar Fatura</Text>
-                            <TouchableOpacity onPress={() => setShowPicker(false)}>
-                                <Ionicons name="close-circle" size={30} color="#cbd5e1" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView>
-                            {invoices.map((inv) => (
-                                <TouchableOpacity
-                                    key={inv.id}
-                                    className={`p-4 rounded-xl border mb-3 flex-row justify-between items-center ${selectedInvoice?.id === inv.id ? 'bg-purple-50 border-purple-200' : 'bg-white border-slate-100'}`}
-                                    onPress={() => {
-                                        setSelectedInvoice(inv);
-                                        setShowPicker(false);
-                                    }}
-                                >
-                                    <View>
-                                        <Text className={`font-bold text-base ${selectedInvoice?.id === inv.id ? 'text-purple-700' : 'text-slate-700'}`}>
-                                            {getMonthYear(inv.data_vencimento)}
-                                        </Text>
-                                        <Text className="text-slate-500 text-sm">
-                                            Vence em {formatDate(inv.data_vencimento)}
-                                        </Text>
-                                    </View>
-                                    <Text className={`font-bold ${selectedInvoice?.id === inv.id ? 'text-purple-700' : 'text-slate-900'}`}>
-                                        {formatCurrency(inv.valor)}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                {/* Banner / Promotion */}
+                <View className="mt-4 bg-indigo-900 rounded-2xl p-6 relative overflow-hidden">
+                    <LinearGradient
+                        colors={['#312e81', '#4338ca']}
+                        className="absolute inset-0"
+                    />
+                    <View className="relative z-10 w-[70%]">
+                        <Text className="text-white font-bold text-lg mb-1">Internet Fibra Óptica</Text>
+                        <Text className="text-indigo-200 text-sm mb-3">Ultra velocidade para sua casa.</Text>
+                        <TouchableOpacity className="bg-white self-start px-4 py-2 rounded-lg">
+                            <Text className="text-indigo-900 font-bold text-xs">SAIBA MAIS</Text>
+                        </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
-            </Modal>
+                    <View className="absolute right-0 bottom-0 opacity-20">
+                        <Ionicons name="rocket" size={100} color="white" />
+                    </View>
+                </View>
+            </View>
         </View>
     );
 }

@@ -14,7 +14,7 @@ interface MenuItem {
     isDestructive?: boolean;
 }
 
-export default function SettingsScreen() {
+export default function PerfilScreen() {
     const router = useRouter();
     const { signOut } = useAuth();
 
@@ -48,7 +48,7 @@ export default function SettingsScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-slate-50 p-6">
-            <Text className="text-2xl font-bold text-slate-800 mb-6">Configurações</Text>
+            <Text className="text-2xl font-bold text-slate-800 mb-6">Perfil</Text>
 
             {/* Menu Items */}
             <View className="bg-white rounded-xl shadow-sm mb-4">
