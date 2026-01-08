@@ -1,8 +1,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, TouchableOpacity, View } from 'react-native';
 
 interface PromotionalModalProps {
     visible: boolean;
@@ -29,51 +28,26 @@ export function PromotionalModal({ visible, onClose }: PromotionalModalProps) {
             onRequestClose={handleClose}
         >
             <View className="flex-1 bg-black/60 justify-center items-center px-6">
-                <View className="bg-white w-full rounded-3xl overflow-hidden shadow-2xl relative">
+                <View className="relative w-full h-[70vh] items-center justify-center">
 
-                    {/* Close Button */}
+                    {/* Image Area */}
+                    <View className="w-full h-full rounded-2xl overflow-hidden pointer-events-none">
+                        <Image
+                            source={require('../../assets/imagem.jpg')}
+                            className="w-full h-full"
+                            style={{ resizeMode: 'contain' }}
+                        />
+                    </View>
+
+                    {/* Close Button - After image, high index/elevation */}
                     <TouchableOpacity
                         onPress={handleClose}
-                        className="absolute top-4 right-4 z-10 bg-black/20 rounded-full p-1"
+                        className="absolute top-0 right-0 z-50 bg-white rounded-full p-2 shadow-xl elevation-10"
+                        hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                        style={{ elevation: 10 }} // Explicit style for Android safety
                     >
-                        <Ionicons name="close" size={24} color="white" />
+                        <Ionicons name="close" size={24} color="black" />
                     </TouchableOpacity>
-
-                    {/* Image / Header Area */}
-                    <View className="h-48 w-full relative">
-                        <LinearGradient
-                            colors={['#7e22ce', '#db2777']}
-                            className="absolute w-full h-full"
-                        />
-                        <View className="flex-1 justify-center items-center">
-                            <Ionicons name="gift-outline" size={64} color="white" />
-                            <Text className="text-white font-bold text-2xl mt-2">Oferta Especial!</Text>
-                        </View>
-                    </View>
-
-                    {/* Content */}
-                    <View className="p-6 items-center">
-                        <Text className="text-slate-800 text-xl font-bold text-center mb-2">
-                            Aumente sua Internet
-                        </Text>
-                        <Text className="text-slate-500 text-center mb-6 leading-5">
-                            Dobro de velocidade por apenas + R$ 10,00 na sua mensalidade. Aproveite por tempo limitado!
-                        </Text>
-
-                        <TouchableOpacity
-                            className="bg-purple-600 w-full py-4 rounded-xl items-center mb-3 shadow-lg shadow-purple-200"
-                            onPress={handleClose}
-                        >
-                            <Text className="text-white font-bold text-lg">EU QUERO!</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            className="w-full py-3 rounded-xl items-center"
-                            onPress={handleClose}
-                        >
-                            <Text className="text-slate-400 font-medium">Agora não</Text>
-                        </TouchableOpacity>
-                    </View>
                 </View>
             </View>
         </Modal>
