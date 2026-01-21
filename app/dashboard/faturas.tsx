@@ -18,8 +18,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { ErrorState } from '../../src/components/StateComponents';
 import { useAuth } from '../../src/context/AuthContext';
-import { ixcApi } from '../../src/services/api';
+import { useInvoices } from '../../src/hooks/useQueries';
+import { bffApi } from '../../src/services/api';
 import { Invoice } from '../../src/types/ixc';
 import { formatCurrency, formatDateShort, getFirstName, getMonthName, getMonthYear } from '../../src/utils/formatters';
 import { showToast } from '../../src/utils/toast';
@@ -27,35 +29,34 @@ import { showToast } from '../../src/utils/toast';
 export default function FaturasScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [loading, setLoading] = useState(true);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [showPicker, setShowPicker] = useState(false);
 
     // Get first name for greeting
     const firstName = getFirstName(user?.razao);
 
-    useEffect(() => {
-        loadInvoices();
-    }, []);
+    // Use cached query for invoices
+    const { data: invoices = [], isLoading: loading, isError, refetch } = useInvoices();
 
-    const loadInvoices = async () => {
-        if (!user?.id) return;
-        try {
-            setLoading(true);
-            const data = await ixcApi.getOpenInvoices(user.id);
-            setInvoices(data);
-            // Default to the OLDEST invoice (first in the list if sorted by asc date, which API does)
-            if (data.length > 0) {
-                setSelectedInvoice(data[0]);
-            }
-        } catch (error) {
-            console.error(error);
-            Alert.alert('Erro', 'Não foi possível carregar as faturas.');
-        } finally {
-            setLoading(false);
+    // Set default selected invoice when data loads
+    useEffect(() => {
+        if (invoices.length > 0 && !selectedInvoice) {
+            setSelectedInvoice(invoices[0]);
         }
-    };
+    }, [invoices]);
+
+    // Handle error state
+    if (isError) {
+        return (
+            <View className="flex-1 bg-slate-50">
+                <ErrorState
+                    title="Erro ao carregar faturas"
+                    message="Não foi possível buscar suas faturas. Verifique sua conexão."
+                    onRetry={() => refetch()}
+                />
+            </View>
+        );
+    }
     const [loadingPix, setLoadingPix] = useState(false);
     const [loadingBoleto, setLoadingBoleto] = useState(false);
     const [showBoletoModal, setShowBoletoModal] = useState(false);
@@ -86,7 +87,7 @@ export default function FaturasScreen() {
         // Otherwise, fetch from API
         try {
             setLoadingPix(true);
-            const pixCode = await ixcApi.getPixCode(selectedInvoice.id);
+            const pixCode = await bffApi.getPixCode(selectedInvoice.id);
 
             if (pixCode) {
                 await Clipboard.setStringAsync(pixCode);
@@ -136,7 +137,7 @@ export default function FaturasScreen() {
 
         try {
             setLoadingBoleto(true);
-            const base64Pdf = await ixcApi.getBoleto(selectedInvoice.id);
+            const base64Pdf = await bffApi.getBoleto(selectedInvoice.id);
 
             if (base64Pdf) {
                 console.log('PDF received. Size:', base64Pdf.length);

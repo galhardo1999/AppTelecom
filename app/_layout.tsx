@@ -1,8 +1,10 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
 import '../global.css'; // Import NativeWind global styles
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { queryClient } from '../src/lib/queryClient';
 
 // Separate component to handle navigation logic inside Provider
 function RootNavigator() {
@@ -51,8 +53,11 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
+

@@ -1,14 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
-import { ixcApi } from '../services/api';
-import CryptoJS from 'crypto-js';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authApi, setAccessToken } from '../services/api';
 
-// Define User Type based on generic IXC fields we expect
+// Define User Type
 type User = {
     id: string;
     razao: string; // Name
     hotsite_email: string;
-    senha?: string; // MD5 hash usually
+    endereco?: string;
     [key: string]: any;
 };
 
@@ -28,68 +27,70 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Check for persisted user
-        const loadUser = async () => {
+        // Check for persisted session
+        const loadSession = async () => {
             try {
-                const storedUser = await SecureStore.getItemAsync('user_session');
-                if (storedUser) {
+                const [storedToken, storedUser] = await Promise.all([
+                    SecureStore.getItemAsync('access_token'),
+                    SecureStore.getItemAsync('user_session'),
+                ]);
+
+                if (storedToken && storedUser) {
+                    // Set token in API client
+                    setAccessToken(storedToken);
                     setUser(JSON.parse(storedUser));
                 }
             } catch (error) {
-                console.error('Failed to load user session', error);
+                console.error('Failed to load session', error);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadUser();
+        loadSession();
     }, []);
 
     const signIn = async (email: string, pass: string) => {
         try {
-            // 1. Fetch user from IXC
-            const client = await ixcApi.findClientByEmail(email);
+            // Call BFF login endpoint
+            const response = await authApi.login(email, pass);
 
-            if (!client) {
-                throw new Error('Email não encontrado.');
+            const { token, user: userData } = response;
+
+            if (!token || !userData) {
+                throw new Error('Resposta inválida do servidor');
             }
 
-            // 2. Validate Password
-            // IXC usually stores MD5. We compare MD5(pass) with client.senha
-            const inputHash = CryptoJS.MD5(pass).toString();
+            // Store token and user data
+            await Promise.all([
+                SecureStore.setItemAsync('access_token', token),
+                SecureStore.setItemAsync('user_session', JSON.stringify(userData)),
+            ]);
 
-            // NOTE: Adjust this logic if your IXC instance uses plain text or different hash.
-            // Assuming MD5 based on standard IXC behavior and prompt hint.
-            if (client.senha !== inputHash) {
-                // Fallback check: sometimes (rarely) it might be plain text in older systems?
-                // But for security we default to checking hash validity.
-                // If client.senha is empty, user might not have a password set.
-                if (client.senha && client.senha !== pass) {
-                    throw new Error('Senha incorreta.');
-                }
-                if (!client.senha) {
-                    // Decision: If no password on file, do we allow? 
-                    // Usually ISP requires password.
-                    // For now, fail safe.
-                    throw new Error('Cadastro sem senha. Contate o suporte.');
-                }
-            }
-
-            // 3. User Validated - Store Session
-            // Remove sensitive data before storing if possible, but we keep generic user info
-            const userSession = { ...client };
-            delete userSession.senha; // Don't store hash in memory if not needed
-
-            await SecureStore.setItemAsync('user_session', JSON.stringify(userSession));
-            setUser(userSession);
+            // Set token in API client for subsequent requests
+            setAccessToken(token);
+            setUser(userData);
 
         } catch (error: any) {
             console.error('Login error:', error);
-            throw new Error(error.message || 'Falha na autenticação');
+
+            // Extract error message from response or use generic
+            const message = error.response?.data?.error
+                || error.message
+                || 'Falha na autenticação';
+
+            throw new Error(message);
         }
     };
 
     const signOut = async () => {
-        await SecureStore.deleteItemAsync('user_session');
+        // Clear stored data
+        await Promise.all([
+            SecureStore.deleteItemAsync('access_token'),
+            SecureStore.deleteItemAsync('user_session'),
+        ]);
+
+        // Clear token from API client
+        setAccessToken(null);
         setUser(null);
     };
 
