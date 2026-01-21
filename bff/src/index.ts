@@ -121,6 +121,29 @@ app.get('/api/invoices', async (c) => {
     }
 });
 
+// Get all invoices history (open, paid, overdue)
+app.get('/api/invoices/history', async (c) => {
+    const user = c.get('user') as JWTPayload;
+    const status = c.req.query('status') as 'A' | 'P' | 'V' | undefined;
+
+    try {
+        const invoices = await ixcService.getAllInvoices(user.userId, status);
+
+        // Group invoices by classification for easier frontend handling
+        const grouped = {
+            abertas: invoices.filter((inv: any) => inv.status_classificado === 'A'),
+            vencidas: invoices.filter((inv: any) => inv.status_classificado === 'V'),
+            pagas: invoices.filter((inv: any) => inv.status_classificado === 'P'),
+            all: invoices
+        };
+
+        return c.json(grouped);
+    } catch (error) {
+        console.error('Get invoices history error:', error);
+        return c.json({ error: 'Erro ao buscar histórico de faturas' }, 500);
+    }
+});
+
 // Get contracts
 app.get('/api/contracts', async (c) => {
     const user = c.get('user') as JWTPayload;

@@ -84,6 +84,57 @@ export const ixcService = {
     },
 
     /**
+     * Get all invoices for a client (including paid, open, overdue)
+     * @param status - Optional: 'A' (Aberto), 'P' (Pago), 'V' (Vencido), or undefined for all
+     */
+    getAllInvoices: async (clientId: string, status?: 'A' | 'P' | 'V') => {
+        try {
+            const gridParams: any[] = [];
+
+            if (status) {
+                gridParams.push({ "TB": "fn_areceber.status", "OP": "=", "P": status });
+            }
+
+            const response = await ixcClient.post('/fn_areceber', {
+                qtype: 'fn_areceber.id_cliente',
+                query: clientId,
+                oper: '=',
+                page: '1',
+                rp: '100',
+                sortname: 'fn_areceber.data_vencimento',
+                sortorder: 'desc',
+                ...(gridParams.length > 0 && { grid_param: JSON.stringify(gridParams) })
+            });
+
+            const invoices = response.data?.registros || [];
+
+            // Classify invoices by status for frontend convenience
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            return invoices.map((inv: any) => {
+                const dueDate = new Date(inv.data_vencimento);
+                dueDate.setHours(0, 0, 0, 0);
+
+                let classification = inv.status;
+                // If status is 'A' (Aberto) but past due date, mark as overdue
+                if (inv.status === 'A' && dueDate < today) {
+                    classification = 'V'; // Vencido
+                }
+
+                return {
+                    ...inv,
+                    status_original: inv.status,
+                    status_classificado: classification
+                };
+            });
+        } catch (error) {
+            console.error('IXC getAllInvoices error:', error);
+            throw error;
+        }
+    },
+
+    /**
      * Get client contracts
      */
     getContracts: async (clientId: string) => {
@@ -106,24 +157,70 @@ export const ixcService = {
     },
 
     /**
-     * Get internet usage data
+     * Get internet usage data from radusuarios table
+     * Fields: consumo (download), consumo_upload, consumo_diario
      */
     getInternetUsage: async (clientId: string) => {
         try {
-            const response = await ixcClient.post('/radusuario', {
-                qtype: 'radusuario.id_cliente',
+            // First try with radusuarios (plural) - newer IXC versions
+            const response = await ixcClient.post('/radusuarios', {
+                qtype: 'radusuarios.id_cliente',
                 query: clientId,
                 oper: '=',
                 page: '1',
-                rp: '10',
-                sortname: 'radusuario.id',
+                rp: '20',
+                sortname: 'radusuarios.id',
                 sortorder: 'desc'
             });
 
-            return response.data?.registros || [];
-        } catch (error) {
-            console.error('IXC getInternetUsage error:', error);
-            throw error;
+            const registros = response.data?.registros || [];
+
+            // Map the response to include consumption fields
+            return registros.map((item: any) => ({
+                id: item.id,
+                id_cliente: item.id_cliente,
+                login: item.login,
+                senha: item.senha,
+                ip: item.ip,
+                mac: item.mac,
+                online: item.online,
+                status: item.status,
+                // Consumption fields
+                consumo: item.consumo || '0',           // Download total
+                consumo_upload: item.consumo_upload || '0', // Upload total
+                consumo_diario: item.consumo_diario || '0', // Daily consumption
+                // Traffic fields (alternative names)
+                rx: item.rx || item.consumo || '0',
+                tx: item.tx || item.consumo_upload || '0',
+                // ONU/OLT signal levels
+                onu_rx: item.onu_rx || item.sinal_onu || '',
+                onu_tx: item.onu_tx || '',
+                olt_rx: item.olt_rx || item.sinal_olt || '',
+                olt_tx: item.olt_tx || '',
+                // Connection info
+                tempo_online: item.tempo_online || item.uptime || '',
+                ultima_conexao: item.ultima_conexao || item.ultimo_acesso || '',
+                id_conexao: item.id_conexao || ''
+            }));
+        } catch (error: any) {
+            // Fallback to radusuario (singular) for older IXC versions
+            console.log('Trying fallback to /radusuario...');
+            try {
+                const fallbackResponse = await ixcClient.post('/radusuario', {
+                    qtype: 'radusuario.id_cliente',
+                    query: clientId,
+                    oper: '=',
+                    page: '1',
+                    rp: '20',
+                    sortname: 'radusuario.id',
+                    sortorder: 'desc'
+                });
+
+                return fallbackResponse.data?.registros || [];
+            } catch (fallbackError) {
+                console.error('IXC getInternetUsage error (both endpoints failed):', error);
+                throw error;
+            }
         }
     },
 

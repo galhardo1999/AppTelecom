@@ -17,6 +17,20 @@ export function useInvoices() {
 }
 
 /**
+ * Hook to fetch all invoices history (open, paid, overdue)
+ */
+export function useInvoiceHistory() {
+    const { user } = useAuth();
+
+    return useQuery({
+        queryKey: ['invoices-history', user?.id],
+        queryFn: () => bffApi.getInvoiceHistory(),
+        enabled: !!user?.id,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+}
+
+/**
  * Hook to fetch contracts with caching
  */
 export function useContracts() {

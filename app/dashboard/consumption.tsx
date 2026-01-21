@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     ScrollView,
     Text,
@@ -11,10 +10,22 @@ import {
     View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DailyConsumptionChart, TrafficComparison } from '../../src/components/Charts';
+import { SkeletonConsumptionCard } from '../../src/components/Skeleton';
 import { useAuth } from '../../src/context/AuthContext';
 import { ixcApi } from '../../src/services/api';
 import { RadUsuario } from '../../src/types/ixc';
 import { formatBytes } from '../../src/utils/formatters';
+
+// Helper to convert bytes/KB to GB
+const toGB = (value: string | number): number => {
+    const num = typeof value === 'string' ? parseFloat(value) || 0 : value;
+    // IXC can return in bytes, KB, or MB - detect based on size
+    if (num > 1000000000) return num / (1024 * 1024 * 1024); // bytes to GB
+    if (num > 1000000) return num / (1024 * 1024); // KB to GB  
+    if (num > 1000) return num / 1024; // MB to GB
+    return num; // Already in GB
+};
 
 export default function ConsumptionScreen() {
     const router = useRouter();
@@ -80,9 +91,10 @@ export default function ConsumptionScreen() {
             {/* Content */}
             <View className="flex-1 -mt-8 px-6">
                 {loading ? (
-                    <View className="flex-1 justify-center items-center">
-                        <ActivityIndicator color="#7c3aed" size="large" />
-                    </View>
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                        <SkeletonConsumptionCard />
+                        <SkeletonConsumptionCard />
+                    </ScrollView>
                 ) : usage.length === 0 ? (
                     <View className="flex-1 justify-center items-center">
                         <View className="w-20 h-20 bg-slate-200 rounded-full items-center justify-center mb-4">
@@ -97,108 +109,132 @@ export default function ConsumptionScreen() {
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                         {usage.map((item) => {
                             const statusInfo = getStatusInfo(item.online, item.status);
+
+                            // Convert consumption values to GB
+                            const downloadGB = toGB(item.consumo || item.rx || '0');
+                            const uploadGB = toGB(item.consumo_upload || item.tx || '0');
+                            const dailyDownloadGB = toGB(item.consumo_diario || '0');
+
                             return (
-                                <View
-                                    key={item.id}
-                                    className="bg-white rounded-2xl p-5 shadow-sm mb-4 border border-slate-100"
-                                >
-                                    {/* Connection Status Header */}
-                                    <View className="flex-row justify-between items-center mb-4">
-                                        <View className="flex-row items-center">
-                                            <View
-                                                className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                                                style={{ backgroundColor: statusInfo.color + '20' }}
-                                            >
-                                                <Ionicons name={statusInfo.icon} size={24} color={statusInfo.color} />
-                                            </View>
-                                            <View>
-                                                <Text className="text-slate-800 text-lg font-bold">
-                                                    {item.login || 'Conexão'}
-                                                </Text>
-                                                <Text style={{ color: statusInfo.color }} className="font-semibold">
-                                                    {statusInfo.label}
-                                                </Text>
-                                            </View>
+                                <View key={item.id}>
+                                    {/* Consumption Chart */}
+                                    <DailyConsumptionChart
+                                        downloadGB={downloadGB}
+                                        uploadGB={uploadGB}
+                                        dailyDownloadGB={dailyDownloadGB}
+                                        dailyUploadGB={0}
+                                    />
+
+                                    {/* Traffic Distribution */}
+                                    {(downloadGB > 0 || uploadGB > 0) && (
+                                        <View className="mb-4">
+                                            <TrafficComparison
+                                                currentDownload={downloadGB}
+                                                currentUpload={uploadGB}
+                                            />
                                         </View>
-                                        {item.tempo_online && (
-                                            <View className="bg-slate-100 px-3 py-2 rounded-xl">
-                                                <Text className="text-slate-500 text-xs">Tempo Online</Text>
-                                                <Text className="text-slate-800 font-medium text-sm">
-                                                    {item.tempo_online}
+                                    )}
+
+                                    {/* Connection Info Card */}
+                                    <View className="bg-white rounded-2xl p-5 shadow-sm mb-4 border border-slate-100">
+                                        {/* Connection Status Header */}
+                                        <View className="flex-row justify-between items-center mb-4">
+                                            <View className="flex-row items-center">
+                                                <View
+                                                    className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                                                    style={{ backgroundColor: statusInfo.color + '20' }}
+                                                >
+                                                    <Ionicons name={statusInfo.icon} size={24} color={statusInfo.color} />
+                                                </View>
+                                                <View>
+                                                    <Text className="text-slate-800 text-lg font-bold">
+                                                        {item.login || 'Conexão'}
+                                                    </Text>
+                                                    <Text style={{ color: statusInfo.color }} className="font-semibold">
+                                                        {statusInfo.label}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            {item.tempo_online && (
+                                                <View className="bg-slate-100 px-3 py-2 rounded-xl">
+                                                    <Text className="text-slate-500 text-xs">Tempo Online</Text>
+                                                    <Text className="text-slate-800 font-medium text-sm">
+                                                        {item.tempo_online}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
+
+                                        {/* Divider */}
+                                        <View className="h-px bg-slate-100 my-3" />
+
+                                        {/* Traffic Info */}
+                                        <View className="flex-row mb-4">
+                                            <View className="flex-1 bg-green-50 rounded-xl p-4 mr-2">
+                                                <View className="flex-row items-center mb-2">
+                                                    <Ionicons name="arrow-down" size={18} color="#22c55e" />
+                                                    <Text className="text-green-700 font-medium ml-1">Download</Text>
+                                                </View>
+                                                <Text className="text-slate-800 text-xl font-bold">
+                                                    {formatBytes(item.consumo || item.rx)}
                                                 </Text>
                                             </View>
-                                        )}
-                                    </View>
-
-                                    {/* Divider */}
-                                    <View className="h-px bg-slate-100 my-3" />
-
-                                    {/* Traffic Info */}
-                                    <View className="flex-row mb-4">
-                                        <View className="flex-1 bg-green-50 rounded-xl p-4 mr-2">
-                                            <View className="flex-row items-center mb-2">
-                                                <Ionicons name="arrow-down" size={18} color="#22c55e" />
-                                                <Text className="text-green-700 font-medium ml-1">Download</Text>
-                                            </View>
-                                            <Text className="text-slate-800 text-xl font-bold">
-                                                {formatBytes(item.rx)}
-                                            </Text>
-                                        </View>
-                                        <View className="flex-1 bg-blue-50 rounded-xl p-4 ml-2">
-                                            <View className="flex-row items-center mb-2">
-                                                <Ionicons name="arrow-up" size={18} color="#3b82f6" />
-                                                <Text className="text-blue-700 font-medium ml-1">Upload</Text>
-                                            </View>
-                                            <Text className="text-slate-800 text-xl font-bold">
-                                                {formatBytes(item.tx)}
-                                            </Text>
-                                        </View>
-                                    </View>
-
-                                    {/* Connection Details */}
-                                    <View className="bg-slate-50 rounded-xl p-4">
-                                        <Text className="text-slate-600 font-semibold mb-3">Detalhes da Conexão</Text>
-
-                                        <View className="flex-row mb-3">
-                                            <View className="flex-1">
-                                                <Text className="text-slate-500 text-xs mb-1">Endereço IP</Text>
-                                                <Text className="text-slate-800 font-mono font-medium">
-                                                    {item.ip || '-'}
-                                                </Text>
-                                            </View>
-                                            <View className="flex-1">
-                                                <Text className="text-slate-500 text-xs mb-1">MAC Address</Text>
-                                                <Text className="text-slate-800 font-mono font-medium text-xs">
-                                                    {item.mac || '-'}
+                                            <View className="flex-1 bg-blue-50 rounded-xl p-4 ml-2">
+                                                <View className="flex-row items-center mb-2">
+                                                    <Ionicons name="arrow-up" size={18} color="#3b82f6" />
+                                                    <Text className="text-blue-700 font-medium ml-1">Upload</Text>
+                                                </View>
+                                                <Text className="text-slate-800 text-xl font-bold">
+                                                    {formatBytes(item.consumo_upload || item.tx)}
                                                 </Text>
                                             </View>
                                         </View>
 
-                                        {(item.onu_rx || item.onu_tx) && (
+                                        {/* Connection Details */}
+                                        <View className="bg-slate-50 rounded-xl p-4">
+                                            <Text className="text-slate-600 font-semibold mb-3">Detalhes da Conexão</Text>
+
                                             <View className="flex-row mb-3">
                                                 <View className="flex-1">
-                                                    <Text className="text-slate-500 text-xs mb-1">ONU RX</Text>
-                                                    <Text className="text-slate-800 font-medium">
-                                                        {item.onu_rx || '-'} dBm
+                                                    <Text className="text-slate-500 text-xs mb-1">Endereço IP</Text>
+                                                    <Text className="text-slate-800 font-mono font-medium">
+                                                        {item.ip || '-'}
                                                     </Text>
                                                 </View>
                                                 <View className="flex-1">
-                                                    <Text className="text-slate-500 text-xs mb-1">ONU TX</Text>
-                                                    <Text className="text-slate-800 font-medium">
-                                                        {item.onu_tx || '-'} dBm
+                                                    <Text className="text-slate-500 text-xs mb-1">MAC Address</Text>
+                                                    <Text className="text-slate-800 font-mono font-medium text-xs">
+                                                        {item.mac || '-'}
                                                     </Text>
                                                 </View>
                                             </View>
-                                        )}
 
-                                        {item.ultima_conexao && (
-                                            <View>
-                                                <Text className="text-slate-500 text-xs mb-1">Última Conexão</Text>
-                                                <Text className="text-slate-800 font-medium">
-                                                    {item.ultima_conexao}
-                                                </Text>
-                                            </View>
-                                        )}
+                                            {(item.onu_rx || item.onu_tx) && (
+                                                <View className="flex-row mb-3">
+                                                    <View className="flex-1">
+                                                        <Text className="text-slate-500 text-xs mb-1">ONU RX</Text>
+                                                        <Text className="text-slate-800 font-medium">
+                                                            {item.onu_rx || '-'} dBm
+                                                        </Text>
+                                                    </View>
+                                                    <View className="flex-1">
+                                                        <Text className="text-slate-500 text-xs mb-1">ONU TX</Text>
+                                                        <Text className="text-slate-800 font-medium">
+                                                            {item.onu_tx || '-'} dBm
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            )}
+
+                                            {item.ultima_conexao && (
+                                                <View>
+                                                    <Text className="text-slate-500 text-xs mb-1">Última Conexão</Text>
+                                                    <Text className="text-slate-800 font-medium">
+                                                        {item.ultima_conexao}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
                                     </View>
                                 </View>
                             );

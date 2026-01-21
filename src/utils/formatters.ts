@@ -71,5 +71,14 @@ export const formatBytes = (bytes: string | number): string => {
  */
 export const getFirstName = (fullName: string | undefined | null): string => {
     if (!fullName) return 'Cliente';
-    return fullName.split(' ')[0];
+
+    // Remove numbers and special chars from the start (CPF/CNPJ/ID often prefixed)
+    // Matches patterns like "123.456.789 " or "123456 " at start
+    const cleanName = fullName.replace(/^[\d\.\-\/\s]+/, '').trim();
+
+    if (!cleanName) return 'Cliente';
+
+    // Capitalize first letter and lowercase rest (just in case)
+    const firstName = cleanName.split(' ')[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
 };

@@ -1,31 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useAuth } from '../src/context/AuthContext';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
-
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../src/context/AuthContext';
+import { getBiometryIcon, getBiometryLabel, useBiometrics } from '../src/hooks/useBiometrics';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [biometricLoading, setBiometricLoading] = useState(false);
     const { signIn } = useAuth();
 
     const [activeField, setActiveField] = useState<string | null>(null);
     const [rememberEmail, setRememberEmail] = useState(false);
+    const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
 
+    // Biometrics hook
+    const {
+        isSupported,
+        isEnabled,
+        biometryType,
+        isLoading: biometricsLoading,
+        canUseBiometrics,
+        enableBiometrics,
+        authenticateWithBiometrics,
+    } = useBiometrics();
+
+    // Load saved email
     useEffect(() => {
-        SecureStore.getItemAsync('saved_email').then(email => {
-            if (email) {
-                setEmail(email);
+        SecureStore.getItemAsync('saved_email').then(savedEmail => {
+            if (savedEmail) {
+                setEmail(savedEmail);
                 setRememberEmail(true);
             }
         });
     }, []);
+
+    // Try biometric login on mount if available
+    useEffect(() => {
+        if (canUseBiometrics && !biometricsLoading) {
+            handleBiometricLogin();
+        }
+    }, [canUseBiometrics, biometricsLoading]);
+
+    const handleBiometricLogin = async () => {
+        if (!canUseBiometrics) return;
+
+        setBiometricLoading(true);
+        try {
+            const credentials = await authenticateWithBiometrics();
+
+            if (credentials) {
+                await signIn(credentials.email, credentials.password);
+            }
+        } catch (error: any) {
+            console.error('Biometric login error:', error);
+            // Don't show error - user can still login with password
+        } finally {
+            setBiometricLoading(false);
+        }
+    };
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -43,12 +93,31 @@ export default function LoginScreen() {
                 await SecureStore.deleteItemAsync('saved_email');
             }
 
+            // After successful login, prompt to enable biometrics if supported but not enabled
+            if (isSupported && !isEnabled) {
+                setShowBiometricPrompt(true);
+            }
+
         } catch (error: any) {
             Alert.alert('Erro de Acesso', error.message);
         } finally {
             setLoading(false);
         }
     };
+
+    const handleEnableBiometrics = async () => {
+        const success = await enableBiometrics(email, password);
+        if (success) {
+            Alert.alert(
+                'Sucesso!',
+                `${getBiometryLabel(biometryType)} ativado. No próximo login você poderá usar biometria.`
+            );
+        }
+        setShowBiometricPrompt(false);
+    };
+
+    const biometryLabel = getBiometryLabel(biometryType);
+    const biometryIcon = getBiometryIcon(biometryType) as keyof typeof Ionicons.glyphMap;
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -88,6 +157,35 @@ export default function LoginScreen() {
                                 Acesse sua conta para continuar
                             </Text>
                         </View>
+
+                        {/* Biometric Login Button (if available) */}
+                        {canUseBiometrics && (
+                            <TouchableOpacity
+                                className="bg-purple-50 border-2 border-purple-200 rounded-xl py-4 px-6 mb-6 flex-row items-center justify-center active:bg-purple-100"
+                                onPress={handleBiometricLogin}
+                                disabled={biometricLoading || loading}
+                            >
+                                {biometricLoading ? (
+                                    <ActivityIndicator color="#7c3aed" />
+                                ) : (
+                                    <>
+                                        <Ionicons name={biometryIcon} size={24} color="#7c3aed" />
+                                        <Text className="text-purple-700 font-semibold text-base ml-3">
+                                            Entrar com {biometryLabel}
+                                        </Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Divider (if biometrics available) */}
+                        {canUseBiometrics && (
+                            <View className="flex-row items-center mb-6">
+                                <View className="flex-1 h-px bg-slate-200" />
+                                <Text className="text-slate-400 text-sm mx-4">ou</Text>
+                                <View className="flex-1 h-px bg-slate-200" />
+                            </View>
+                        )}
 
                         {/* Form Section */}
                         <View className="space-y-6">
@@ -147,7 +245,7 @@ export default function LoginScreen() {
                             <TouchableOpacity
                                 className="bg-purple-600 rounded-xl py-4 items-center mt-6 shadow-md shadow-purple-200 active:bg-purple-800"
                                 onPress={handleLogin}
-                                disabled={loading}
+                                disabled={loading || biometricLoading}
                             >
                                 {loading ? (
                                     <ActivityIndicator color="white" />
@@ -156,6 +254,32 @@ export default function LoginScreen() {
                                 )}
                             </TouchableOpacity>
                         </View>
+
+                        {/* Biometrics Prompt (shown after successful login if supported but not enabled) */}
+                        {showBiometricPrompt && isSupported && !isEnabled && (
+                            <View className="mt-6 bg-purple-50 rounded-xl p-4 border border-purple-200">
+                                <Text className="text-purple-900 font-semibold text-center mb-2">
+                                    Ativar {biometryLabel}?
+                                </Text>
+                                <Text className="text-purple-700 text-center text-sm mb-4">
+                                    Use {biometryLabel} para entrar mais rápido na próxima vez.
+                                </Text>
+                                <View className="flex-row space-x-3">
+                                    <TouchableOpacity
+                                        className="flex-1 bg-white rounded-lg py-2 border border-purple-300"
+                                        onPress={() => setShowBiometricPrompt(false)}
+                                    >
+                                        <Text className="text-purple-600 text-center font-medium">Depois</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        className="flex-1 bg-purple-600 rounded-lg py-2"
+                                        onPress={handleEnableBiometrics}
+                                    >
+                                        <Text className="text-white text-center font-medium">Ativar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
 
                         {/* Footer */}
                         <View className="mt-12 items-center">

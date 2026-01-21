@@ -39,12 +39,19 @@ export interface RadUsuario {
     ip: string;
     mac: string;
     online: string;
+    // Consumption fields from IXC radusuarios
+    consumo: string;        // Total download (bytes/KB)
+    consumo_upload: string; // Total upload (bytes/KB)
+    consumo_diario: string; // Daily consumption
+    // Traffic fields (mapped from consumo)
     rx: string;
     tx: string;
+    // ONU/OLT signal levels
     onu_rx: string;
     onu_tx: string;
     olt_rx: string;
     olt_tx: string;
+    // Connection info
     tempo_online: string;
     ultima_conexao: string;
     id_conexao: string;

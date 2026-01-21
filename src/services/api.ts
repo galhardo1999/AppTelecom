@@ -94,6 +94,12 @@ export const bffApi = {
         return response.data;
     },
 
+    // Get invoice history (all invoices grouped by status)
+    getInvoiceHistory: async () => {
+        const response = await api.get('/api/invoices/history');
+        return response.data;
+    },
+
     // Get internet usage
     getInternetUsage: async (clientId?: string) => {
         const response = await api.get('/api/usage');
