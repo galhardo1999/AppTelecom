@@ -1,8 +1,8 @@
 import { Context, Next } from 'hono';
 
 interface RateLimitConfig {
-    windowMs: number;      // Time window in milliseconds
-    maxRequests: number;   // Max requests per window
+    windowMs: number;      // Janela de tempo em milissegundos
+    maxRequests: number;   // Máximo de requisições por janela
 }
 
 interface RateLimitEntry {
@@ -10,10 +10,10 @@ interface RateLimitEntry {
     resetTime: number;
 }
 
-// In-memory store (for production, use Redis)
+// Armazenamento em memória (para produção, use Redis)
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
-// Clean up expired entries periodically
+// Limpar entradas expiradas periodicamente
 setInterval(() => {
     const now = Date.now();
     for (const [key, entry] of rateLimitStore.entries()) {
@@ -21,14 +21,14 @@ setInterval(() => {
             rateLimitStore.delete(key);
         }
     }
-}, 60000); // Clean every minute
+}, 60000); // Limpar a cada minuto
 
 /**
  * Rate limiter middleware factory
  */
 export function rateLimiter(config: RateLimitConfig) {
     return async (c: Context, next: Next) => {
-        // Get client identifier (IP or user ID from JWT)
+        // Obter identificador do cliente (IP ou ID do usuário do JWT)
         const user = c.get('user');
         const clientId = user?.userId || c.req.header('x-forwarded-for') || 'unknown';
 
@@ -38,7 +38,7 @@ export function rateLimiter(config: RateLimitConfig) {
         let entry = rateLimitStore.get(key);
 
         if (!entry || now > entry.resetTime) {
-            // Create new entry
+            // Criar nova entrada
             entry = {
                 count: 1,
                 resetTime: now + config.windowMs
@@ -48,7 +48,7 @@ export function rateLimiter(config: RateLimitConfig) {
             entry.count++;
         }
 
-        // Set rate limit headers
+        // Definir headers de rate limit
         c.header('X-RateLimit-Limit', config.maxRequests.toString());
         c.header('X-RateLimit-Remaining', Math.max(0, config.maxRequests - entry.count).toString());
         c.header('X-RateLimit-Reset', Math.ceil(entry.resetTime / 1000).toString());
@@ -71,14 +71,14 @@ export function rateLimiter(config: RateLimitConfig) {
  * Stricter rate limiter for login attempts (prevent brute force)
  */
 export const loginRateLimiter = rateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5            // 5 login attempts per 15 min
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    maxRequests: 5            // 5 tentativas de login por 15 min
 });
 
 /**
  * Standard rate limiter for API requests
  */
 export const apiRateLimiter = rateLimiter({
-    windowMs: 60 * 1000, // 1 minute
-    maxRequests: 60      // 60 requests per minute
+    windowMs: 60 * 1000, // 1 minuto
+    maxRequests: 60      // 60 requisições por minuto
 });

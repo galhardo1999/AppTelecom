@@ -15,7 +15,7 @@ export interface JWTPayload {
 export async function generateToken(payload: JWTPayload): Promise<string> {
     const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
 
-    // Parse expiration time
+    // Analisar tempo de expiração
     let expirationTime = '1h';
     if (expiresIn.endsWith('h')) {
         expirationTime = expiresIn;
@@ -62,7 +62,7 @@ export async function authMiddleware(c: Context, next: Next) {
         return c.json({ error: 'Token inválido ou expirado' }, 401);
     }
 
-    // Attach user info to context
+    // Anexar informações do usuário ao contexto
     c.set('user', payload);
 
     await next();

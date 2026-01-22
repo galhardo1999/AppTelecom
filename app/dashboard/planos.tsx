@@ -1,6 +1,6 @@
 
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import { File as ExpoFile, Paths } from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
@@ -52,15 +52,13 @@ export default function PlanoScreen() {
             }
 
             const fileName = `contrato_${contractId}_${Date.now()}.pdf`;
-            const filePath = `${FileSystem.cacheDirectory}${fileName}`;
+            const file = new ExpoFile(Paths.cache, fileName);
 
-            await FileSystem.writeAsStringAsync(filePath, base64Pdf, {
-                encoding: 'base64',
-            });
+            await file.write(base64Pdf, { encoding: 'base64' });
 
             const isAvailable = await Sharing.isAvailableAsync();
             if (isAvailable) {
-                await Sharing.shareAsync(filePath, {
+                await Sharing.shareAsync(file.uri, {
                     mimeType: 'application/pdf',
                     dialogTitle: 'Meu Contrato - Apollo Telecom',
                 });
@@ -75,10 +73,10 @@ export default function PlanoScreen() {
         }
     };
 
-    // Get main contract (first active one)
+    // Obter contrato principal (primeiro ativo)
     const mainContract = contracts.find(c => c.status === 'A') || contracts[0];
 
-    // Get status info
+    // Obter informações de status
     const getStatusInfo = (status: string) => {
         switch (status) {
             case 'A':
@@ -94,7 +92,7 @@ export default function PlanoScreen() {
         }
     };
 
-    // Get internet status info
+    // Obter informações de status da internet
     const getInternetStatusInfo = (status: string) => {
         switch (status) {
             case 'A':
@@ -108,7 +106,7 @@ export default function PlanoScreen() {
         }
     };
 
-    // Info row component
+    // Componente de linha de informação
     const InfoRow = ({ icon, label, value, valueColor }: {
         icon: keyof typeof Ionicons.glyphMap;
         label: string;

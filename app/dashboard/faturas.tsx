@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
+import { File as ExpoFile, Paths } from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -39,13 +39,13 @@ export default function FaturasScreen() {
     const [showPicker, setShowPicker] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('abertas');
 
-    // Get first name for greeting
+    // Obter primeiro nome para saudação
     const firstName = getFirstName(user?.razao);
 
-    // Use invoice history query
+    // Usar query de histórico de faturas
     const { data: invoiceData, isLoading: loading, isError, refetch } = useInvoiceHistory();
 
-    // Get current month invoice (only the most recent open invoice for current month)
+    // Obter fatura do mês atual (apenas a fatura aberta mais recente do mês atual)
     const getCurrentMonthInvoice = (invoices: Invoice[]): Invoice[] => {
         if (!invoices || invoices.length === 0) return [];
 
@@ -53,22 +53,22 @@ export default function FaturasScreen() {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        // Find invoice for current month
+        // Encontrar fatura do mês atual
         const currentMonthInvoice = invoices.find(inv => {
             const dueDate = new Date(inv.data_vencimento);
             return dueDate.getMonth() === currentMonth && dueDate.getFullYear() === currentYear;
         });
 
-        // If no invoice for current month, return the first (most recent) one
+        // Se não houver fatura do mês atual, retornar a primeira (mais recente)
         return currentMonthInvoice ? [currentMonthInvoice] : [invoices[0]];
     };
 
-    // Get invoices for current tab
+    // Obter faturas para a aba atual
     const getInvoicesForTab = (): Invoice[] => {
         if (!invoiceData) return [];
         switch (activeTab) {
             case 'abertas':
-                // Show only current month invoice (1 invoice)
+                // Mostrar apenas fatura do mês atual (1 fatura)
                 return getCurrentMonthInvoice(invoiceData.abertas || []);
             case 'vencidas':
                 return invoiceData.vencidas || [];
@@ -81,7 +81,7 @@ export default function FaturasScreen() {
 
     const currentInvoices = getInvoicesForTab();
 
-    // Set default selected invoice when data loads or tab changes
+    // Definir fatura selecionada padrão quando dados carregam ou aba muda
     useEffect(() => {
         if (currentInvoices.length > 0) {
             setSelectedInvoice(currentInvoices[0]);
@@ -90,18 +90,18 @@ export default function FaturasScreen() {
         }
     }, [invoiceData, activeTab]);
 
-    // Tab counter badges
+    // Badges de contador das abas
     const getTabCount = (tab: TabType): number => {
         if (!invoiceData) return 0;
         if (tab === 'abertas') {
-            // Show 1 for current month invoice if exists
+            // Mostrar 1 para fatura do mês atual se existir
             const abertas = invoiceData.abertas || [];
             return abertas.length > 0 ? 1 : 0;
         }
         return invoiceData[tab]?.length || 0;
     };
 
-    // Handle error state
+    // Tratar estado de erro
     if (isError) {
         return (
             <View className="flex-1 bg-slate-50">
@@ -134,14 +134,14 @@ export default function FaturasScreen() {
             return;
         }
 
-        // First check if we already have the PIX code in the invoice data
+        // Primeiro verificar se já temos o código PIX nos dados da fatura
         if (selectedInvoice.pix_copia_cola) {
             await Clipboard.setStringAsync(selectedInvoice.pix_copia_cola);
             showToast('Código PIX copiado!');
             return;
         }
 
-        // Otherwise, fetch from API
+        // Caso contrário, buscar da API
         try {
             setLoadingPix(true);
             const pixCode = await bffApi.getPixCode(selectedInvoice.id);
@@ -164,16 +164,14 @@ export default function FaturasScreen() {
         if (!selectedInvoice) return;
         try {
             const fileName = `boleto_${selectedInvoice.id}_${Date.now()}.pdf`;
-            const filePath = `${FileSystem.cacheDirectory}${fileName}`;
-            console.log('Saving boleto to:', filePath);
+            const file = new ExpoFile(Paths.cache, fileName);
+            console.log('Saving boleto to:', file.uri);
 
-            await FileSystem.writeAsStringAsync(filePath, base64Data, {
-                encoding: 'base64',
-            });
+            await file.write(base64Data, { encoding: 'base64' });
 
             const isAvailable = await Sharing.isAvailableAsync();
             if (isAvailable) {
-                await Sharing.shareAsync(filePath, {
+                await Sharing.shareAsync(file.uri, {
                     mimeType: 'application/pdf',
                     dialogTitle: 'Fatura Apollo Telecom',
                 });
@@ -199,12 +197,12 @@ export default function FaturasScreen() {
             if (base64Pdf) {
                 console.log('PDF received. Size:', base64Pdf.length);
 
-                // On Android, WebView cannot render local PDF/Base64 directly.
-                // Best practice is to save and open with external view action.
+                // No Android, WebView não consegue renderizar PDF/Base64 local diretamente.
+                // Melhor prática é salvar e abrir com ação de visualização externa.
                 if (Platform.OS === 'android') {
                     await saveAndSharePdf(base64Pdf);
                 } else {
-                    // On iOS, WebView works fine for PDF
+                    // No iOS, WebView funciona bem para PDF
                     setBoletoBase64(base64Pdf);
                     setShowBoletoModal(true);
                 }
@@ -229,7 +227,7 @@ export default function FaturasScreen() {
         }
     };
 
-    // Get status label and color
+    // Obter label e cor do status
     const getStatusInfo = () => {
         switch (activeTab) {
             case 'abertas':
@@ -244,7 +242,7 @@ export default function FaturasScreen() {
     const statusInfo = getStatusInfo();
     const isPaid = activeTab === 'pagas';
 
-    // Tab button component
+    // Componente de botão de aba
     const TabButton = ({ tab, label }: { tab: TabType; label: string }) => {
         const isActive = activeTab === tab;
         const count = getTabCount(tab);
@@ -278,7 +276,7 @@ export default function FaturasScreen() {
 
     return (
         <View className="flex-1 bg-slate-50">
-            {/* Top Section with Gradient */}
+            {/* Seção Superior com Gradiente */}
             <View className="h-[58%] w-full relative">
                 <LinearGradient
                     colors={activeTab === 'vencidas'
@@ -293,7 +291,7 @@ export default function FaturasScreen() {
                 />
 
                 <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
-                    {/* Header: Logo + Actions */}
+                    {/* Cabeçalho: Logo + Ações */}
                     <View className="flex-row justify-between items-center py-2">
                         <View className="bg-white/20 p-2 rounded-xl">
                             <Image
@@ -307,30 +305,30 @@ export default function FaturasScreen() {
                             <TouchableOpacity>
                                 <Ionicons name="notifications-outline" size={24} color="white" />
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => router.push('/dashboard/settings')}>
+                            <TouchableOpacity onPress={() => router.push('/dashboard/perfil')}>
                                 <Ionicons name="settings-outline" size={24} color="white" />
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* Greeting */}
+                    {/* Saudação */}
                     <View className="mt-4 mb-3">
                         <Text className="text-white text-lg font-medium">Olá, {firstName}</Text>
                     </View>
 
-                    {/* Tabs */}
+                    {/* Abas */}
                     <View className="flex-row bg-white/10 rounded-xl p-1 mb-4">
                         <TabButton tab="abertas" label="Abertas" />
                         <TabButton tab="vencidas" label="Vencidas" />
                         <TabButton tab="pagas" label="Pagas" />
                     </View>
 
-                    {/* Main Content Area */}
+                    {/* Área de Conteúdo Principal */}
                     {loading ? (
                         <SkeletonInvoiceHeader />
                     ) : selectedInvoice ? (
                         <View className="flex-1 relative">
-                            {/* Selector */}
+                            {/* Seletor */}
                             <Text className="text-white/80 text-sm mb-2">Selecionar Fatura:</Text>
                             <TouchableOpacity
                                 onPress={() => setShowPicker(true)}
@@ -345,7 +343,7 @@ export default function FaturasScreen() {
                                 <Ionicons name="chevron-down" size={20} color="#cbd5e1" />
                             </TouchableOpacity>
 
-                            {/* Details Information */}
+                            {/* Informações de Detalhes */}
                             <View className="flex-row items-center space-x-2 mb-2">
                                 <Ionicons name="location-outline" size={16} color="white" />
                                 <Text className="text-white font-medium text-xs uppercase tracking-wide">
@@ -353,7 +351,7 @@ export default function FaturasScreen() {
                                 </Text>
                             </View>
 
-                            {/* Large Value Display */}
+                            {/* Exibição de Valor Grande */}
                             <View className="mt-2">
                                 <Text className="text-white text-5xl font-bold tracking-tighter">
                                     {formatCurrency(selectedInvoice.valor)}
@@ -366,7 +364,7 @@ export default function FaturasScreen() {
                                 </View>
                             </View>
 
-                            {/* Watermark Month Name */}
+                            {/* Marca d'água Nome do Mês */}
                             <View className="absolute bottom-6 right-0 w-[150%] opacity-10 pointer-events-none z-0">
                                 <Text className="text-white text-6xl font-bold uppercase text-right pr-6" numberOfLines={1}>
                                     {getMonthName(selectedInvoice.data_vencimento)}
@@ -394,13 +392,13 @@ export default function FaturasScreen() {
                 </SafeAreaView>
             </View>
 
-            {/* Bottom Actions Section */}
+            {/* Seção de Ações Inferiores */}
             <View className="flex-1 -mt-12 px-6 pb-6">
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                    {/* Show action buttons only for non-paid invoices */}
+                    {/* Mostrar botões de ação apenas para faturas não pagas */}
                     {!isPaid && selectedInvoice && (
                         <>
-                            {/* Copy Barcode Button */}
+                            {/* Botão Copiar Código de Barras */}
                             <TouchableOpacity
                                 className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
                                 onPress={handleCopyBarcode}
@@ -412,7 +410,7 @@ export default function FaturasScreen() {
                                 <Text className="text-slate-700 font-bold text-lg flex-1">Copiar Código de Barras</Text>
                             </TouchableOpacity>
 
-                            {/* Second Copy Button */}
+                            {/* Botão Segunda Via */}
                             <TouchableOpacity
                                 className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
                                 onPress={handleBoletoAction}
@@ -430,7 +428,7 @@ export default function FaturasScreen() {
                                 </Text>
                             </TouchableOpacity>
 
-                            {/* Pix Button */}
+                            {/* Botão PIX */}
                             <TouchableOpacity
                                 className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
                                 onPress={handlePix}
@@ -450,7 +448,7 @@ export default function FaturasScreen() {
                         </>
                     )}
 
-                    {/* For paid invoices, show download receipt option */}
+                    {/* Para faturas pagas, mostrar opção de baixar comprovante */}
                     {isPaid && selectedInvoice && (
                         <TouchableOpacity
                             className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
@@ -470,7 +468,7 @@ export default function FaturasScreen() {
                         </TouchableOpacity>
                     )}
 
-                    {/* Empty state hint */}
+                    {/* Dica de estado vazio */}
                     {!selectedInvoice && !loading && (
                         <View className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 items-center">
                             <Ionicons
@@ -488,7 +486,7 @@ export default function FaturasScreen() {
                 </ScrollView>
             </View>
 
-            {/* Picker Modal */}
+            {/* Modal Seletor */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -536,7 +534,7 @@ export default function FaturasScreen() {
                 </TouchableOpacity>
             </Modal>
 
-            {/* PDF Modal */}
+            {/* Modal PDF */}
             <Modal
                 animationType="slide"
                 presentationStyle="pageSheet"
@@ -545,7 +543,7 @@ export default function FaturasScreen() {
             >
                 <View className="flex-1 bg-slate-50">
                     <SafeAreaView className="flex-1" edges={['top']}>
-                        {/* Modal Header */}
+                        {/* Cabeçalho do Modal */}
                         <View className="flex-row justify-between items-center px-4 py-3 bg-white border-b border-slate-200">
                             <TouchableOpacity
                                 onPress={() => setShowBoletoModal(false)}
@@ -563,7 +561,7 @@ export default function FaturasScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* WebView for PDF */}
+                        {/* WebView para PDF */}
                         <View className="flex-1 bg-slate-200 relative">
                             {boletoBase64 && (
                                 <WebView

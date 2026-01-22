@@ -31,7 +31,7 @@ export default function LoginScreen() {
     const [rememberEmail, setRememberEmail] = useState(false);
     const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
 
-    // Biometrics hook
+    // Hook de biometria
     const {
         isSupported,
         isEnabled,
@@ -42,7 +42,7 @@ export default function LoginScreen() {
         authenticateWithBiometrics,
     } = useBiometrics();
 
-    // Load saved email
+    // Carregar email salvo
     useEffect(() => {
         SecureStore.getItemAsync('saved_email').then(savedEmail => {
             if (savedEmail) {
@@ -52,7 +52,7 @@ export default function LoginScreen() {
         });
     }, []);
 
-    // Try biometric login on mount if available
+    // Tentar login biométrico ao montar se disponível
     useEffect(() => {
         if (canUseBiometrics && !biometricsLoading) {
             handleBiometricLogin();
@@ -71,7 +71,7 @@ export default function LoginScreen() {
             }
         } catch (error: any) {
             console.error('Biometric login error:', error);
-            // Don't show error - user can still login with password
+            // Não mostra erro - usuário ainda pode fazer login com senha
         } finally {
             setBiometricLoading(false);
         }
@@ -93,7 +93,7 @@ export default function LoginScreen() {
                 await SecureStore.deleteItemAsync('saved_email');
             }
 
-            // After successful login, prompt to enable biometrics if supported but not enabled
+            // Após login bem-sucedido, sugerir ativar biometria se suportado mas não ativado
             if (isSupported && !isEnabled) {
                 setShowBiometricPrompt(true);
             }
@@ -134,12 +134,12 @@ export default function LoginScreen() {
                     showsVerticalScrollIndicator={false}
                 >
 
-                    {/* Wrapper to keep content together */}
+                    {/* Container para manter conteúdo junto */}
                     <Animated.View
                         className="w-full"
                         entering={FadeInDown.delay(200).duration(1000).springify()}
                     >
-                        {/* Logo Section */}
+                        {/* Seção do Logo */}
                         <View className="items-center mb-10">
                             <Image
                                 source={require('../assets/logo.png')}
@@ -148,7 +148,7 @@ export default function LoginScreen() {
                             />
                         </View>
 
-                        {/* Title Section */}
+                        {/* Seção do Título */}
                         <View className="items-center mb-8">
                             <Text className="text-3xl font-bold text-slate-900 text-center">
                                 Bem-vindo de volta
@@ -158,7 +158,7 @@ export default function LoginScreen() {
                             </Text>
                         </View>
 
-                        {/* Biometric Login Button (if available) */}
+                        {/* Botão de Login Biométrico (se disponível) */}
                         {canUseBiometrics && (
                             <TouchableOpacity
                                 className="bg-purple-50 border-2 border-purple-200 rounded-xl py-4 px-6 mb-6 flex-row items-center justify-center active:bg-purple-100"
@@ -178,7 +178,7 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                         )}
 
-                        {/* Divider (if biometrics available) */}
+                        {/* Divisor (se biometria disponível) */}
                         {canUseBiometrics && (
                             <View className="flex-row items-center mb-6">
                                 <View className="flex-1 h-px bg-slate-200" />
@@ -187,10 +187,10 @@ export default function LoginScreen() {
                             </View>
                         )}
 
-                        {/* Form Section */}
+                        {/* Seção do Formulário */}
                         <View className="space-y-6">
 
-                            {/* User Input */}
+                            {/* Campo de Usuário */}
                             <View>
                                 <Text className="text-slate-700 mb-2 font-medium ml-1">Usuário</Text>
                                 <View className={`w-full bg-white border rounded-xl px-4 py-3.5 flex-row items-center ${activeField === 'email' ? 'border-purple-600' : 'border-slate-200'}`}>
@@ -209,7 +209,7 @@ export default function LoginScreen() {
                                 </View>
                             </View>
 
-                            {/* Password Input */}
+                            {/* Campo de Senha */}
                             <View>
                                 <Text className="text-slate-700 mb-2 font-medium ml-1">Senha</Text>
                                 <View className={`w-full bg-white border rounded-xl px-4 py-3.5 flex-row items-center ${activeField === 'password' ? 'border-purple-600' : 'border-slate-200'}`}>
@@ -230,7 +230,7 @@ export default function LoginScreen() {
                                 </View>
                             </View>
 
-                            {/* Remember Email Checkbox */}
+                            {/* Checkbox Lembrar Email */}
                             <TouchableOpacity
                                 className="flex-row items-center ml-1 mt-4"
                                 onPress={() => setRememberEmail(!rememberEmail)}
@@ -241,7 +241,7 @@ export default function LoginScreen() {
                                 <Text className="text-slate-600 text-sm font-medium">Lembrar email</Text>
                             </TouchableOpacity>
 
-                            {/* Submit Button */}
+                            {/* Botão de Enviar */}
                             <TouchableOpacity
                                 className="bg-purple-600 rounded-xl py-4 items-center mt-6 shadow-md shadow-purple-200 active:bg-purple-800"
                                 onPress={handleLogin}
@@ -255,7 +255,7 @@ export default function LoginScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Biometrics Prompt (shown after successful login if supported but not enabled) */}
+                        {/* Prompt de Biometria (exibido após login bem-sucedido se suportado mas não ativado) */}
                         {showBiometricPrompt && isSupported && !isEnabled && (
                             <View className="mt-6 bg-purple-50 rounded-xl p-4 border border-purple-200">
                                 <Text className="text-purple-900 font-semibold text-center mb-2">
@@ -281,7 +281,7 @@ export default function LoginScreen() {
                             </View>
                         )}
 
-                        {/* Footer */}
+                        {/* Rodapé */}
                         <View className="mt-12 items-center">
                             <Text className="text-slate-400 text-xs text-center">
                                 © 2025 Apollo Telecom. Todos os direitos reservados.

@@ -5,7 +5,7 @@ import CryptoJS from 'crypto-js';
 const IXC_HOST = process.env.IXC_HOST!;
 const IXC_TOKEN = process.env.IXC_TOKEN!;
 
-// Create Basic Auth Header (same logic as original app)
+// Criar cabeçalho de Basic Auth (mesma lógica do app original)
 const authHeader = `Basic ${Buffer.from(IXC_TOKEN).toString('base64')}`;
 
 const ixcClient = axios.create({
@@ -108,7 +108,7 @@ export const ixcService = {
 
             const invoices = response.data?.registros || [];
 
-            // Classify invoices by status for frontend convenience
+            // Classificar faturas por status para conveniência do frontend
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -117,7 +117,7 @@ export const ixcService = {
                 dueDate.setHours(0, 0, 0, 0);
 
                 let classification = inv.status;
-                // If status is 'A' (Aberto) but past due date, mark as overdue
+                // Se status é 'A' (Aberto) mas passou da data de vencimento, marcar como vencido
                 if (inv.status === 'A' && dueDate < today) {
                     classification = 'V'; // Vencido
                 }
@@ -162,7 +162,7 @@ export const ixcService = {
      */
     getInternetUsage: async (clientId: string) => {
         try {
-            // First try with radusuarios (plural) - newer IXC versions
+            // Primeiro tentar com radusuarios (plural) - versões mais recentes do IXC
             const response = await ixcClient.post('/radusuarios', {
                 qtype: 'radusuarios.id_cliente',
                 query: clientId,
@@ -175,7 +175,7 @@ export const ixcService = {
 
             const registros = response.data?.registros || [];
 
-            // Map the response to include consumption fields
+            // Mapear a resposta para incluir campos de consumo
             return registros.map((item: any) => ({
                 id: item.id,
                 id_cliente: item.id_cliente,
@@ -185,19 +185,19 @@ export const ixcService = {
                 mac: item.mac,
                 online: item.online,
                 status: item.status,
-                // Consumption fields
+                // Campos de consumo
                 consumo: item.consumo || '0',           // Download total
                 consumo_upload: item.consumo_upload || '0', // Upload total
-                consumo_diario: item.consumo_diario || '0', // Daily consumption
-                // Traffic fields (alternative names)
+                consumo_diario: item.consumo_diario || '0', // Consumo diário
+                // Campos de tráfego (nomes alternativos)
                 rx: item.rx || item.consumo || '0',
                 tx: item.tx || item.consumo_upload || '0',
-                // ONU/OLT signal levels
+                // Níveis de sinal ONU/OLT
                 onu_rx: item.onu_rx || item.sinal_onu || '',
                 onu_tx: item.onu_tx || '',
                 olt_rx: item.olt_rx || item.sinal_olt || '',
                 olt_tx: item.olt_tx || '',
-                // Connection info
+                // Informações de conexão
                 tempo_online: item.tempo_online || item.uptime || '',
                 ultima_conexao: item.ultima_conexao || item.ultimo_acesso || '',
                 id_conexao: item.id_conexao || ''
@@ -330,11 +330,11 @@ export const ixcService = {
             console.log('[CONTRACT] Response type:', typeof response.data);
 
             if (response.data) {
-                // Check if it's already a base64 PDF string
+                // Verificar se já é uma string PDF em base64
                 if (typeof response.data === 'string' && response.data.startsWith('JVBER')) {
                     return response.data;
                 }
-                // Try common response formats
+                // Tentar formatos comuns de resposta
                 return response.data.base64 || response.data.arquivo || response.data.pdf || response.data.contrato || null;
             }
             return null;

@@ -17,14 +17,14 @@ import { ixcApi } from '../../src/services/api';
 import { RadUsuario } from '../../src/types/ixc';
 import { formatBytes } from '../../src/utils/formatters';
 
-// Helper to convert bytes/KB to GB
+// Função auxiliar para converter bytes/KB para GB
 const toGB = (value: string | number): number => {
     const num = typeof value === 'string' ? parseFloat(value) || 0 : value;
-    // IXC can return in bytes, KB, or MB - detect based on size
-    if (num > 1000000000) return num / (1024 * 1024 * 1024); // bytes to GB
-    if (num > 1000000) return num / (1024 * 1024); // KB to GB  
-    if (num > 1000) return num / 1024; // MB to GB
-    return num; // Already in GB
+    // IXC pode retornar em bytes, KB ou MB - detectar baseado no tamanho
+    if (num > 1000000000) return num / (1024 * 1024 * 1024); // bytes para GB
+    if (num > 1000000) return num / (1024 * 1024); // KB para GB  
+    if (num > 1000) return num / 1024; // MB para GB
+    return num; // Já está em GB
 };
 
 export default function ConsumptionScreen() {
@@ -60,7 +60,7 @@ export default function ConsumptionScreen() {
 
     return (
         <View className="flex-1 bg-slate-50">
-            {/* Header with Gradient */}
+            {/* Cabeçalho com Gradiente */}
             <View className="h-[180px] w-full relative">
                 <LinearGradient
                     colors={['#2e1065', '#9333ea', '#f97316']}
@@ -70,7 +70,7 @@ export default function ConsumptionScreen() {
                 />
 
                 <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
-                    {/* Header Row */}
+                    {/* Linha do Cabeçalho */}
                     <View className="flex-row items-center py-4">
                         <TouchableOpacity
                             onPress={() => router.back()}
@@ -81,14 +81,14 @@ export default function ConsumptionScreen() {
                         <Text className="text-white text-2xl font-bold">Consumo de Internet</Text>
                     </View>
 
-                    {/* Subtitle */}
+                    {/* Subtítulo */}
                     <Text className="text-white/80 text-base mt-2">
                         Status da sua conexão
                     </Text>
                 </SafeAreaView>
             </View>
 
-            {/* Content */}
+            {/* Conteúdo */}
             <View className="flex-1 -mt-8 px-6">
                 {loading ? (
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -110,14 +110,14 @@ export default function ConsumptionScreen() {
                         {usage.map((item) => {
                             const statusInfo = getStatusInfo(item.online, item.status);
 
-                            // Convert consumption values to GB
+                            // Converter valores de consumo para GB
                             const downloadGB = toGB(item.consumo || item.rx || '0');
                             const uploadGB = toGB(item.consumo_upload || item.tx || '0');
                             const dailyDownloadGB = toGB(item.consumo_diario || '0');
 
                             return (
                                 <View key={item.id}>
-                                    {/* Consumption Chart */}
+                                    {/* Gráfico de Consumo */}
                                     <DailyConsumptionChart
                                         downloadGB={downloadGB}
                                         uploadGB={uploadGB}
@@ -125,7 +125,7 @@ export default function ConsumptionScreen() {
                                         dailyUploadGB={0}
                                     />
 
-                                    {/* Traffic Distribution */}
+                                    {/* Distribuição de Tráfego */}
                                     {(downloadGB > 0 || uploadGB > 0) && (
                                         <View className="mb-4">
                                             <TrafficComparison
@@ -135,9 +135,9 @@ export default function ConsumptionScreen() {
                                         </View>
                                     )}
 
-                                    {/* Connection Info Card */}
+                                    {/* Card de Informações da Conexão */}
                                     <View className="bg-white rounded-2xl p-5 shadow-sm mb-4 border border-slate-100">
-                                        {/* Connection Status Header */}
+                                        {/* Cabeçalho do Status de Conexão */}
                                         <View className="flex-row justify-between items-center mb-4">
                                             <View className="flex-row items-center">
                                                 <View
@@ -165,10 +165,10 @@ export default function ConsumptionScreen() {
                                             )}
                                         </View>
 
-                                        {/* Divider */}
+                                        {/* Divisor */}
                                         <View className="h-px bg-slate-100 my-3" />
 
-                                        {/* Traffic Info */}
+                                        {/* Informações de Tráfego */}
                                         <View className="flex-row mb-4">
                                             <View className="flex-1 bg-green-50 rounded-xl p-4 mr-2">
                                                 <View className="flex-row items-center mb-2">
@@ -190,7 +190,7 @@ export default function ConsumptionScreen() {
                                             </View>
                                         </View>
 
-                                        {/* Connection Details */}
+                                        {/* Detalhes da Conexão */}
                                         <View className="bg-slate-50 rounded-xl p-4">
                                             <Text className="text-slate-600 font-semibold mb-3">Detalhes da Conexão</Text>
 

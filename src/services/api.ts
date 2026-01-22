@@ -3,14 +3,14 @@ import * as SecureStore from 'expo-secure-store';
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3000';
 
-// Simple callback for 401 auth errors (React Native compatible)
+// Callback simples para erros de auth 401 (compatível com React Native)
 let onUnauthorizedCallback: (() => void) | null = null;
 
 export const setOnUnauthorized = (callback: (() => void) | null) => {
     onUnauthorizedCallback = callback;
 };
 
-// Create axios instance pointing to BFF
+// Criar instância do axios apontando para o BFF
 const api = axios.create({
     baseURL: BFF_URL,
     headers: {
@@ -19,7 +19,7 @@ const api = axios.create({
     timeout: 30000, // 30 seconds
 });
 
-// Token management
+// Gerenciamento de token
 let accessToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
@@ -28,10 +28,10 @@ export const setAccessToken = (token: string | null) => {
 
 export const getAccessToken = () => accessToken;
 
-// Request interceptor - add JWT token to all requests
+// Interceptador de requisição - adicionar token JWT em todas as requisições
 api.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-        // Try to get token from memory first, then from SecureStore
+        // Tentar obter token da memória primeiro, depois do SecureStore
         let token = accessToken;
 
         if (!token) {
@@ -50,17 +50,17 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle auth errors
+// Interceptador de resposta - tratar erros de auth
 api.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
         if (error.response?.status === 401) {
-            // Token expired or invalid - clear stored token
+            // Token expirado ou inválido - limpar token armazenado
             accessToken = null;
             await SecureStore.deleteItemAsync('access_token');
             await SecureStore.deleteItemAsync('user_session');
 
-            // Call the callback so AuthContext can update state
+            // Chamar o callback para que o AuthContext possa atualizar o estado
             if (onUnauthorizedCallback) {
                 onUnauthorizedCallback();
             }
@@ -70,7 +70,7 @@ api.interceptors.response.use(
 );
 
 // ==========================================
-// AUTH API
+// API DE AUTENTICAÇÃO
 // ==========================================
 
 export const authApi = {
@@ -81,41 +81,41 @@ export const authApi = {
 };
 
 // ==========================================
-// PROTECTED API (requires JWT)
+// API PROTEGIDA (requer JWT)
 // ==========================================
 
 export const bffApi = {
-    // Get current user info
+    // Obter informações do usuário atual
     getUser: async () => {
         const response = await api.get('/api/user');
         return response.data;
     },
 
-    // Get open invoices
+    // Obter faturas em aberto
     getOpenInvoices: async (clientId?: string) => {
         const response = await api.get('/api/invoices');
         return response.data;
     },
 
-    // Get client contracts
+    // Obter contratos do cliente
     getClientContracts: async (clientId?: string) => {
         const response = await api.get('/api/contracts');
         return response.data;
     },
 
-    // Get invoice history (all invoices grouped by status)
+    // Obter histórico de faturas (todas as faturas agrupadas por status)
     getInvoiceHistory: async () => {
         const response = await api.get('/api/invoices/history');
         return response.data;
     },
 
-    // Get internet usage
+    // Obter consumo de internet
     getInternetUsage: async (clientId?: string) => {
         const response = await api.get('/api/usage');
         return response.data;
     },
 
-    // Get PIX code for an invoice
+    // Obter código PIX para uma fatura
     getPixCode: async (invoiceId: string): Promise<string | null> => {
         try {
             const response = await api.post(`/api/pix/${invoiceId}`);
@@ -126,7 +126,7 @@ export const bffApi = {
         }
     },
 
-    // Get Boleto PDF in base64
+    // Obter PDF do boleto em base64
     getBoleto: async (boletoId: string): Promise<string | null> => {
         try {
             const response = await api.post(`/api/boleto/${boletoId}`);
@@ -137,7 +137,7 @@ export const bffApi = {
         }
     },
 
-    // Get Contract PDF in base64
+    // Obter PDF do contrato em base64
     getContractPdf: async (contractId: string): Promise<string | null> => {
         try {
             const response = await api.post(`/api/contract/${contractId}`);
@@ -149,7 +149,7 @@ export const bffApi = {
     },
 };
 
-// Legacy export for compatibility
+// Export legado para compatibilidade
 export const ixcApi = bffApi;
 
 export default api;

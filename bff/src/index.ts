@@ -5,17 +5,22 @@ import { authMiddleware, generateToken, JWTPayload } from './middleware/auth';
 import { apiRateLimiter, loginRateLimiter } from './middleware/rateLimiter';
 import { ixcService } from './services/ixc';
 
-const app = new Hono();
+// Tipagem das variáveis do contexto
+type Variables = {
+    user: JWTPayload;
+};
+
+const app = new Hono<{ Variables: Variables }>();
 
 // Middleware
 app.use('*', logger());
 app.use('*', cors({
-    origin: '*', // In production, restrict to your app domain
+    origin: '*', // Em produção, restringir ao domínio do seu app
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Health check
+// Verificação de saúde
 app.get('/', (c) => {
     return c.json({
         status: 'ok',
@@ -25,7 +30,7 @@ app.get('/', (c) => {
 });
 
 // ==========================================
-// AUTH ROUTES (Public) - with strict rate limiting
+// ROTAS DE AUTENTICAÇÃO (Públicas) - com rate limiting restrito
 // ==========================================
 
 app.post('/auth/login', loginRateLimiter, async (c) => {
@@ -36,26 +41,26 @@ app.post('/auth/login', loginRateLimiter, async (c) => {
             return c.json({ error: 'Email e senha são obrigatórios' }, 400);
         }
 
-        // Find client in IXC
+        // Buscar cliente no IXC
         const client = await ixcService.findClientByEmail(email);
 
         if (!client) {
             return c.json({ error: 'Email não encontrado' }, 401);
         }
 
-        // Validate password
+        // Validar senha
         if (!client.senha) {
             return c.json({ error: 'Cadastro sem senha. Contate o suporte.' }, 401);
         }
 
         const isValidPassword = ixcService.validatePassword(password, client.senha);
 
-        // Fallback: check plain text (some old IXC instances)
+        // Fallback: verificar texto puro (algumas instâncias antigas do IXC)
         if (!isValidPassword && client.senha !== password) {
             return c.json({ error: 'Senha incorreta' }, 401);
         }
 
-        // Generate JWT
+        // Gerar JWT
         const tokenPayload: JWTPayload = {
             userId: client.id,
             email: client.hotsite_email,
@@ -64,7 +69,7 @@ app.post('/auth/login', loginRateLimiter, async (c) => {
 
         const token = await generateToken(tokenPayload);
 
-        // Return user data (without sensitive fields)
+        // Retornar dados do usuário (sem campos sensíveis)
         const userData = { ...client };
         delete userData.senha;
 
@@ -80,14 +85,14 @@ app.post('/auth/login', loginRateLimiter, async (c) => {
 });
 
 // ==========================================
-// PROTECTED API ROUTES
+// ROTAS PROTEGIDAS DA API
 // ==========================================
 
-// Apply auth middleware and rate limiter to all /api/* routes
+// Aplicar middleware de auth e rate limiter para todas as rotas /api/*
 app.use('/api/*', apiRateLimiter);
 app.use('/api/*', authMiddleware);
 
-// Get current user info
+// Obter informações do usuário atual
 app.get('/api/user', async (c) => {
     const user = c.get('user') as JWTPayload;
 
@@ -108,7 +113,7 @@ app.get('/api/user', async (c) => {
     }
 });
 
-// Get open invoices
+// Obter faturas em aberto
 app.get('/api/invoices', async (c) => {
     const user = c.get('user') as JWTPayload;
 
@@ -121,7 +126,7 @@ app.get('/api/invoices', async (c) => {
     }
 });
 
-// Get all invoices history (open, paid, overdue)
+// Obter histórico de todas as faturas (abertas, pagas, vencidas)
 app.get('/api/invoices/history', async (c) => {
     const user = c.get('user') as JWTPayload;
     const status = c.req.query('status') as 'A' | 'P' | 'V' | undefined;
@@ -129,7 +134,7 @@ app.get('/api/invoices/history', async (c) => {
     try {
         const invoices = await ixcService.getAllInvoices(user.userId, status);
 
-        // Group invoices by classification for easier frontend handling
+        // Agrupar faturas por classificação para facilitar o frontend
         const grouped = {
             abertas: invoices.filter((inv: any) => inv.status_classificado === 'A'),
             vencidas: invoices.filter((inv: any) => inv.status_classificado === 'V'),
@@ -144,7 +149,7 @@ app.get('/api/invoices/history', async (c) => {
     }
 });
 
-// Get contracts
+// Obter contratos
 app.get('/api/contracts', async (c) => {
     const user = c.get('user') as JWTPayload;
 
@@ -157,7 +162,7 @@ app.get('/api/contracts', async (c) => {
     }
 });
 
-// Get internet usage
+// Obter consumo de internet
 app.get('/api/usage', async (c) => {
     const user = c.get('user') as JWTPayload;
 
@@ -170,7 +175,7 @@ app.get('/api/usage', async (c) => {
     }
 });
 
-// Get PIX code for invoice
+// Obter código PIX para fatura
 app.post('/api/pix/:invoiceId', async (c) => {
     const invoiceId = c.req.param('invoiceId');
 
@@ -188,7 +193,7 @@ app.post('/api/pix/:invoiceId', async (c) => {
     }
 });
 
-// Get Boleto PDF
+// Obter PDF do boleto
 app.post('/api/boleto/:invoiceId', async (c) => {
     const invoiceId = c.req.param('invoiceId');
 
@@ -206,7 +211,7 @@ app.post('/api/boleto/:invoiceId', async (c) => {
     }
 });
 
-// Get Contract PDF
+// Obter PDF do contrato
 app.post('/api/contract/:contractId', async (c) => {
     const contractId = c.req.param('contractId');
 
@@ -225,7 +230,7 @@ app.post('/api/contract/:contractId', async (c) => {
 });
 
 // ==========================================
-// START SERVER
+// INICIAR SERVIDOR
 // ==========================================
 
 const port = parseInt(process.env.PORT || '3000');

@@ -2,11 +2,11 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
-import '../global.css'; // Import NativeWind global styles
+import '../global.css'; // Importar estilos globais do NativeWind
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { queryClient } from '../src/lib/queryClient';
 
-// Separate component to handle navigation logic inside Provider
+// Componente separado para lidar com lógica de navegação dentro do Provider
 function RootNavigator() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
@@ -18,10 +18,10 @@ function RootNavigator() {
     const inAuthGroup = segments[0] === 'dashboard';
 
     if (user && !inAuthGroup) {
-      // If user is logged in and not in dashboard, go to dashboard
+      // Se usuário está logado e não está no dashboard, ir para dashboard
       router.replace('/dashboard');
     } else if (!user && inAuthGroup) {
-      // If user is not logged in and checks dashboard, go to login
+      // Se usuário não está logado e acessa dashboard, ir para login
       router.replace('/');
     }
   }, [user, isLoading, segments]);
