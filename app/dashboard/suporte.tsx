@@ -74,11 +74,11 @@ export default function SuporteScreen() {
     };
 
     const openWhatsApp = () => {
-        Linking.openURL('https://wa.me/5508000000000'); // Replace with actual number
+        Linking.openURL('https://wa.me/551808008710606');
     };
 
     const callSupport = () => {
-        Linking.openURL('tel:08000000000');
+        Linking.openURL('tel:08008710606');
     };
 
     return (
@@ -127,7 +127,7 @@ export default function SuporteScreen() {
                             </View>
                             <View className="flex-1">
                                 <Text className="text-slate-800 font-bold text-base">Ligue para nós</Text>
-                                <Text className="text-slate-500 text-sm">0800 000 0000</Text>
+                                <Text className="text-slate-500 text-sm">0800 871 0606</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={20} color="#2563eb" />
                         </TouchableOpacity>

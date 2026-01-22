@@ -206,6 +206,24 @@ app.post('/api/boleto/:invoiceId', async (c) => {
     }
 });
 
+// Get Contract PDF
+app.post('/api/contract/:contractId', async (c) => {
+    const contractId = c.req.param('contractId');
+
+    try {
+        const base64Pdf = await ixcService.getContractPdf(contractId);
+
+        if (!base64Pdf) {
+            return c.json({ error: 'Contrato PDF não disponível' }, 404);
+        }
+
+        return c.json({ base64: base64Pdf });
+    } catch (error) {
+        console.error('Get contract PDF error:', error);
+        return c.json({ error: 'Erro ao buscar contrato' }, 500);
+    }
+});
+
 // ==========================================
 // START SERVER
 // ==========================================

@@ -28,23 +28,23 @@ export function PromotionalModal({ visible, onClose }: PromotionalModalProps) {
             onRequestClose={handleClose}
         >
             <View className="flex-1 bg-black/60 justify-center items-center px-6">
-                <View className="relative w-full h-[70vh] items-center justify-center">
+                <View className="relative w-full" style={{ aspectRatio: 0.65 }}>
 
                     {/* Image Area */}
-                    <View className="w-full h-full rounded-2xl overflow-hidden pointer-events-none">
+                    <View className="w-full h-full rounded-2xl overflow-hidden">
                         <Image
                             source={require('../../assets/imagem.jpg')}
                             className="w-full h-full"
-                            style={{ resizeMode: 'contain' }}
+                            style={{ resizeMode: 'cover' }}
                         />
                     </View>
 
-                    {/* Close Button - After image, high index/elevation */}
+                    {/* Close Button - positioned at top-right corner of image (AFTER image so it's on top) */}
                     <TouchableOpacity
                         onPress={handleClose}
-                        className="absolute top-0 right-0 z-50 bg-white rounded-full p-2 shadow-xl elevation-10"
+                        className="absolute z-50 bg-white rounded-full p-2 shadow-xl"
                         hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                        style={{ elevation: 10 }} // Explicit style for Android safety
+                        style={{ elevation: 10, top: 8, right: 8 }}
                     >
                         <Ionicons name="close" size={24} color="black" />
                     </TouchableOpacity>

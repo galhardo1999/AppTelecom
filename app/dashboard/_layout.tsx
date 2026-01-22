@@ -27,9 +27,9 @@ export default function DashboardLayout() {
             <Tabs.Screen
                 name="planos"
                 options={{
-                    title: 'Planos',
+                    title: 'Plano',
                     tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="list-outline" size={size} color={color} />
+                        <Ionicons name="document-text-outline" size={size} color={color} />
                     ),
                 }}
             />

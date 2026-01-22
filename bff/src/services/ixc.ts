@@ -226,15 +226,32 @@ export const ixcService = {
 
     /**
      * Get PIX code for invoice
+     * Tries multiple methods: get_pix endpoint, then direct invoice lookup
      */
     getPixCode: async (invoiceId: string): Promise<string | null> => {
+        console.log(`[PIX] Fetching PIX for invoice: ${invoiceId}`);
+
+        // Method 1: Try the get_pix endpoint (some IXC versions)
         try {
             const response = await ixcClient.post('/get_pix', {
                 id_areceber: invoiceId
             });
 
+            console.log('[PIX] get_pix response:', JSON.stringify(response.data));
+
             if (response.data) {
-                if (typeof response.data === 'string') return response.data;
+                // Handle IXC's actual response format: { pix: { dadosPix: "...", qrCode: { qrcode: "..." } } }
+                if (response.data.pix) {
+                    const pixData = response.data.pix;
+                    if (pixData.dadosPix && pixData.dadosPix.trim() !== '') {
+                        return pixData.dadosPix;
+                    }
+                    if (pixData.qrCode?.qrcode && pixData.qrCode.qrcode.trim() !== '') {
+                        return pixData.qrCode.qrcode;
+                    }
+                }
+                // Legacy formats
+                if (typeof response.data === 'string' && response.data.trim() !== '') return response.data;
                 if (response.data.pix_copia_cola) return response.data.pix_copia_cola;
                 if (response.data.qrcode) return response.data.qrcode;
                 if (response.data.codigo) return response.data.codigo;
@@ -243,11 +260,33 @@ export const ixcService = {
                     return reg.pix_copia_cola || reg.qrcode || reg.codigo || null;
                 }
             }
-            return null;
-        } catch (error) {
-            console.error('IXC getPixCode error:', error);
-            throw error;
+        } catch (error: any) {
+            console.log('[PIX] get_pix endpoint failed, trying direct invoice lookup...');
         }
+
+        // Method 2: Try fetching the invoice directly to get pix_copia_cola
+        try {
+            const response = await ixcClient.post('/fn_areceber', {
+                qtype: 'fn_areceber.id',
+                query: invoiceId,
+                oper: '=',
+                page: '1',
+                rp: '1'
+            });
+
+            console.log('[PIX] fn_areceber response:', JSON.stringify(response.data));
+
+            if (response.data?.registros?.[0]) {
+                const invoice = response.data.registros[0];
+                if (invoice.pix_copia_cola) {
+                    return invoice.pix_copia_cola;
+                }
+            }
+        } catch (error) {
+            console.error('[PIX] Direct invoice lookup failed:', error);
+        }
+
+        return null;
     },
 
     /**
@@ -273,6 +312,34 @@ export const ixcService = {
             return null;
         } catch (error) {
             console.error('IXC getBoleto error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get Contract PDF in base64
+     */
+    getContractPdf: async (contractId: string): Promise<string | null> => {
+        try {
+            console.log(`[CONTRACT] Fetching PDF for contract: ${contractId}`);
+
+            const response = await ixcClient.post('/cliente_contrato_imprimir_contrato_17678', {
+                id: contractId
+            });
+
+            console.log('[CONTRACT] Response type:', typeof response.data);
+
+            if (response.data) {
+                // Check if it's already a base64 PDF string
+                if (typeof response.data === 'string' && response.data.startsWith('JVBER')) {
+                    return response.data;
+                }
+                // Try common response formats
+                return response.data.base64 || response.data.arquivo || response.data.pdf || response.data.contrato || null;
+            }
+            return null;
+        } catch (error) {
+            console.error('IXC getContractPdf error:', error);
             throw error;
         }
     }

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authApi, setAccessToken } from '../services/api';
+import { authApi, setAccessToken, setOnUnauthorized } from '../services/api';
 
 // Define User Type
 type User = {
@@ -47,6 +47,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
         };
         loadSession();
+    }, []);
+
+    // Listen for 401 unauthorized events from API
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            console.log('Session expired, signing out...');
+            setAccessToken(null);
+            setUser(null);
+        };
+
+        setOnUnauthorized(handleUnauthorized);
+        return () => {
+            setOnUnauthorized(null);
+        };
     }, []);
 
     const signIn = async (email: string, pass: string) => {

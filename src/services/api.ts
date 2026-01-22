@@ -3,6 +3,13 @@ import * as SecureStore from 'expo-secure-store';
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3000';
 
+// Simple callback for 401 auth errors (React Native compatible)
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export const setOnUnauthorized = (callback: (() => void) | null) => {
+    onUnauthorizedCallback = callback;
+};
+
 // Create axios instance pointing to BFF
 const api = axios.create({
     baseURL: BFF_URL,
@@ -53,8 +60,10 @@ api.interceptors.response.use(
             await SecureStore.deleteItemAsync('access_token');
             await SecureStore.deleteItemAsync('user_session');
 
-            // The app will detect this and redirect to login
-            // through AuthContext
+            // Call the callback so AuthContext can update state
+            if (onUnauthorizedCallback) {
+                onUnauthorizedCallback();
+            }
         }
         return Promise.reject(error);
     }
@@ -124,6 +133,17 @@ export const bffApi = {
             return response.data?.base64 || null;
         } catch (error) {
             console.error('Error fetching boleto:', error);
+            return null;
+        }
+    },
+
+    // Get Contract PDF in base64
+    getContractPdf: async (contractId: string): Promise<string | null> => {
+        try {
+            const response = await api.post(`/api/contract/${contractId}`);
+            return response.data?.base64 || null;
+        } catch (error) {
+            console.error('Error fetching contract PDF:', error);
             return null;
         }
     },
