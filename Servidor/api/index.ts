@@ -1,7 +1,6 @@
-import { handle } from '@hono/node-server/vercel';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
+import { handle } from 'hono/vercel';
 import { authMiddleware, generateToken, JWTPayload } from '../src/middleware/auth';
 import { apiRateLimiter, loginRateLimiter } from '../src/middleware/rateLimiter';
 import { ixcService } from '../src/services/ixc';
@@ -14,7 +13,6 @@ type Variables = {
 const app = new Hono<{ Variables: Variables }>().basePath('/');
 
 // Middleware
-app.use('*', logger());
 app.use('*', cors({
     origin: '*',
     allowMethods: ['GET', 'POST', 'OPTIONS'],
@@ -216,4 +214,6 @@ app.post('/api/contract/:contractId', async (c) => {
     }
 });
 
-export default handle(app);
+export const GET = handle(app);
+export const POST = handle(app);
+export const OPTIONS = handle(app);
