@@ -129,17 +129,20 @@ app.get('/api/invoices', async (c) => {
 // Obter histórico de todas as faturas (abertas, pagas, vencidas)
 app.get('/api/invoices/history', async (c) => {
     const user = c.get('user') as JWTPayload;
-    const status = c.req.query('status') as 'A' | 'P' | 'V' | undefined;
 
     try {
-        const invoices = await ixcService.getAllInvoices(user.userId, status);
+        // Buscar faturas abertas/vencidas (status != P, C, R)
+        const openInvoices = await ixcService.getAllInvoices(user.userId);
+
+        // Buscar faturas pagas separadamente com filtro específico
+        const paidInvoices = await ixcService.getPaidInvoices(user.userId);
 
         // Agrupar faturas por classificação para facilitar o frontend
         const grouped = {
-            abertas: invoices.filter((inv: any) => inv.status_classificado === 'A'),
-            vencidas: invoices.filter((inv: any) => inv.status_classificado === 'V'),
-            pagas: invoices.filter((inv: any) => inv.status_classificado === 'P'),
-            all: invoices
+            abertas: openInvoices.filter((inv: any) => inv.status_classificado === 'A'),
+            vencidas: openInvoices.filter((inv: any) => inv.status_classificado === 'V'),
+            pagas: paidInvoices,
+            all: [...openInvoices, ...paidInvoices]
         };
 
         return c.json(grouped);

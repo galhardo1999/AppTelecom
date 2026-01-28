@@ -91,7 +91,12 @@ export const ixcService = {
         try {
             const gridParams: any[] = [];
 
-            if (status) {
+            // Para faturas pagas, usar filtro específico que exclui status C e R
+            if (status === 'P') {
+                gridParams.push({ "TB": "fn_areceber.status", "OP": "!=", "P": "C" });
+                gridParams.push({ "TB": "fn_areceber.status", "OP": "!=", "P": "R" });
+                gridParams.push({ "TB": "fn_areceber.status", "OP": "=", "P": "P" });
+            } else if (status) {
                 gridParams.push({ "TB": "fn_areceber.status", "OP": "=", "P": status });
             }
 
@@ -100,7 +105,7 @@ export const ixcService = {
                 query: clientId,
                 oper: '=',
                 page: '1',
-                rp: '100',
+                rp: '200000',
                 sortname: 'fn_areceber.data_vencimento',
                 sortorder: 'desc',
                 ...(gridParams.length > 0 && { grid_param: JSON.stringify(gridParams) })
@@ -135,7 +140,104 @@ export const ixcService = {
     },
 
     /**
-     * Get client contracts
+     * Get paid invoices for a client (status P or R - Recebido/Pago)
+     * No IXC: status 'P' = Pago, status 'R' pode significar Recebido em algumas versões
+     * Também tentamos buscar status 'L' (Liquidado)
+     */
+    getPaidInvoices: async (clientId: string) => {
+        try {
+            console.log('[PAID] ====================================');
+            console.log('[PAID] Fetching paid invoices for client:', clientId);
+
+            // Estratégia 1: Buscar todas as faturas do cliente para ver os status existentes
+            const allResponse = await ixcClient.post('/fn_areceber', {
+                qtype: 'fn_areceber.id_cliente',
+                query: clientId,
+                oper: '=',
+                rp: '200000',
+                sortname: 'fn_areceber.data_vencimento',
+                sortorder: 'desc'
+            });
+
+            const allInvoices = allResponse.data?.registros || [];
+            console.log('[PAID] Total de faturas do cliente:', allInvoices.length);
+
+            // Logar todos os status únicos encontrados
+            const statusCounts: { [key: string]: number } = {};
+            allInvoices.forEach((inv: any) => {
+                const s = inv.status || 'undefined';
+                statusCounts[s] = (statusCounts[s] || 0) + 1;
+            });
+            console.log('[PAID] Status encontrados:', JSON.stringify(statusCounts));
+
+            // Filtrar faturas pagas localmente
+            // Status possíveis para "pago": P, R (Recebido), L (Liquidado)
+            const paidStatuses = ['P', 'R', 'L'];
+            const paidInvoices = allInvoices.filter((inv: any) => {
+                const isPaid = paidStatuses.includes(inv.status);
+                // Também verificar se tem data de pagamento
+                const hasPaymentDate = inv.data_pagamento && inv.data_pagamento !== '0000-00-00';
+                return isPaid || hasPaymentDate;
+            });
+
+            console.log('[PAID] Faturas pagas encontradas:', paidInvoices.length);
+            if (paidInvoices.length > 0) {
+                console.log('[PAID] Exemplo de fatura paga:', JSON.stringify(paidInvoices[0], null, 2));
+            }
+            console.log('[PAID] ====================================');
+
+            // Adicionar classificação para consistência com outras faturas
+            return paidInvoices.map((inv: any) => ({
+                ...inv,
+                status_original: inv.status,
+                status_classificado: 'P' // Todas são pagas
+            }));
+        } catch (error) {
+            console.error('IXC getPaidInvoices error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get city name by ID
+     */
+    getCityName: async (cityId: string): Promise<string> => {
+        try {
+            if (!cityId) return '';
+            const response = await ixcClient.post('/cidade', {
+                qtype: 'cidade.id',
+                query: cityId,
+                oper: '=',
+            });
+            const city = response.data?.registros?.[0];
+            return city?.nome || '';
+        } catch (error) {
+            console.error('IXC getCityName error:', error);
+            return '';
+        }
+    },
+
+    /**
+     * Get state name by ID
+     */
+    getStateName: async (stateId: string): Promise<string> => {
+        try {
+            if (!stateId) return '';
+            const response = await ixcClient.post('/estado', {
+                qtype: 'estado.id',
+                query: stateId,
+                oper: '=',
+            });
+            const state = response.data?.registros?.[0];
+            return state?.uf || state?.nome || '';
+        } catch (error) {
+            console.error('IXC getStateName error:', error);
+            return '';
+        }
+    },
+
+    /**
+     * Get client contracts with full address data
      */
     getContracts: async (clientId: string) => {
         try {
@@ -149,7 +251,36 @@ export const ixcService = {
                 sortorder: 'desc'
             });
 
-            return response.data?.registros || [];
+            const contracts = response.data?.registros || [];
+
+            // Buscar dados do cliente para pegar o endereço completo
+            const clientResponse = await ixcClient.post('/cliente', {
+                qtype: 'cliente.id',
+                query: clientId,
+                oper: '=',
+            });
+            const clientData = clientResponse.data?.registros?.[0];
+
+            // Buscar nomes de cidade e estado
+            let cidadeNome = '';
+            let estadoNome = '';
+
+            if (clientData?.cidade) {
+                cidadeNome = await ixcService.getCityName(clientData.cidade);
+            }
+            if (clientData?.estado) {
+                estadoNome = await ixcService.getStateName(clientData.estado);
+            }
+
+            // Adicionar dados de endereço aos contratos
+            return contracts.map((contract: any) => ({
+                ...contract,
+                endereco: clientData?.endereco || contract.endereco || '',
+                numero: clientData?.numero || '',
+                bairro: clientData?.bairro || '',
+                cidade: cidadeNome,
+                estado: estadoNome,
+            }));
         } catch (error) {
             console.error('IXC getContracts error:', error);
             throw error;

@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -28,7 +28,7 @@ import { Invoice } from '../../src/types/ixc';
 import { formatCurrency, formatDateShort, getFirstName, getMonthName, getMonthYear } from '../../src/utils/formatters';
 import { showToast } from '../../src/utils/toast';
 
-type TabType = 'abertas' | 'vencidas' | 'pagas';
+type TabType = 'vencidas' | 'abertas' | 'pagas';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,7 +37,7 @@ export default function FaturasScreen() {
     const { user } = useAuth();
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [showPicker, setShowPicker] = useState(false);
-    const [activeTab, setActiveTab] = useState<TabType>('abertas');
+    const [activeTab, setActiveTab] = useState<TabType>('vencidas');
 
     // Obter primeiro nome para saudação
     const firstName = getFirstName(user?.razao);
@@ -89,6 +89,15 @@ export default function FaturasScreen() {
             setSelectedInvoice(null);
         }
     }, [invoiceData, activeTab]);
+
+    // Auto-redirecionar para aba Vencidas se houver faturas vencidas ao ganhar foco
+    useFocusEffect(
+        useCallback(() => {
+            if (invoiceData && invoiceData.vencidas?.length > 0) {
+                setActiveTab('vencidas');
+            }
+        }, [invoiceData])
+    );
 
     // Badges de contador das abas
     const getTabCount = (tab: TabType): number => {
@@ -253,9 +262,13 @@ export default function FaturasScreen() {
 
         if (isActive) {
             bgColor = 'bg-white';
-            textColor = 'text-purple-700';
+            // Cor do texto conforme a aba
+            textColor = tab === 'vencidas' ? 'text-red-600' : tab === 'pagas' ? 'text-green-600' : 'text-purple-700';
             badgeColor = tab === 'vencidas' ? 'bg-red-500' : tab === 'pagas' ? 'bg-green-500' : 'bg-purple-500';
         }
+
+        // Não mostrar badge de quantidade para aba Pagas
+        const showBadge = tab !== 'pagas' && count > 0;
 
         return (
             <TouchableOpacity
@@ -263,7 +276,7 @@ export default function FaturasScreen() {
                 className={`flex-1 py-2.5 px-3 rounded-xl flex-row items-center justify-center ${bgColor}`}
             >
                 <Text className={`font-semibold text-sm ${textColor}`}>{label}</Text>
-                {count > 0 && (
+                {showBadge && (
                     <View className={`ml-1.5 px-2 py-0.5 rounded-full ${isActive ? badgeColor : 'bg-white/30'}`}>
                         <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-white/80'}`}>
                             {count}
@@ -318,14 +331,17 @@ export default function FaturasScreen() {
 
                     {/* Abas */}
                     <View className="flex-row bg-white/10 rounded-xl p-1 mb-4">
-                        <TabButton tab="abertas" label="Abertas" />
                         <TabButton tab="vencidas" label="Vencidas" />
+                        <TabButton tab="abertas" label="Abertas" />
                         <TabButton tab="pagas" label="Pagas" />
                     </View>
 
-                    {/* Área de Conteúdo Principal */}
+                    {/* Área de Conteúdo Principal - Vazio para aba Pagas */}
                     {loading ? (
                         <SkeletonInvoiceHeader />
+                    ) : isPaid ? (
+                        /* Aba Pagas - área vazia, histórico abaixo */
+                        null
                     ) : selectedInvoice ? (
                         <View className="flex-1 relative">
                             {/* Seletor */}
@@ -359,7 +375,7 @@ export default function FaturasScreen() {
                                 <View className="flex-row justify-between items-center mt-2 pr-4">
                                     <Text className="text-white/90 text-base font-medium">{statusInfo.label}</Text>
                                     <Text className="text-white/80 text-sm">
-                                        {isPaid ? 'Pago em' : 'Vencimento:'} {formatDateShort(selectedInvoice.data_vencimento)}
+                                        Vencimento: {formatDateShort(selectedInvoice.data_vencimento)}
                                     </Text>
                                 </View>
                             </View>
@@ -374,117 +390,195 @@ export default function FaturasScreen() {
                     ) : (
                         <View className="flex-1 justify-center items-center">
                             <Ionicons
-                                name={isPaid ? "document-text-outline" : "checkmark-circle-outline"}
+                                name="checkmark-circle-outline"
                                 size={64}
                                 color="white"
                             />
                             <Text className="text-white text-lg font-bold mt-4">
-                                {isPaid ? 'Nenhuma fatura paga' : 'Tudo em dia!'}
+                                Tudo em dia!
                             </Text>
                             <Text className="text-white/70 text-center mt-2">
-                                {isPaid
-                                    ? 'Seu histórico de pagamentos aparecerá aqui.'
-                                    : `Você não possui faturas ${activeTab === 'abertas' ? 'abertas' : 'vencidas'}.`
-                                }
+                                Você não possui faturas {activeTab === 'abertas' ? 'abertas' : 'vencidas'}.
                             </Text>
                         </View>
                     )}
                 </SafeAreaView>
             </View>
 
-            {/* Seção de Ações Inferiores */}
-            <View className="flex-1 -mt-12 px-6 pb-6">
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                    {/* Mostrar botões de ação apenas para faturas não pagas */}
-                    {!isPaid && selectedInvoice && (
-                        <>
-                            {/* Botão Copiar Código de Barras */}
-                            <TouchableOpacity
-                                className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
-                                onPress={handleCopyBarcode}
-                                disabled={!selectedInvoice}
-                            >
-                                <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
-                                    <Ionicons name="barcode-outline" size={24} color="#64748b" />
+            {/* Conteúdo - Diferente para aba Pagas (Histórico) */}
+            {isPaid ? (
+                /* Layout de Histórico para Faturas Pagas */
+                <View className="flex-1 -mt-72 px-6 pb-6">
+                    <View className="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1">
+                        {/* Cabeçalho do Histórico */}
+                        <View className="px-5 py-4 border-b border-slate-100">
+                            <View className="flex-row items-center justify-between">
+                                <View className="flex-row items-center">
+                                    <View className="w-10 h-10 bg-green-100 rounded-xl items-center justify-center mr-3">
+                                        <Ionicons name="checkmark-circle" size={24} color="#22c55e" />
+                                    </View>
+                                    <View>
+                                        <Text className="text-slate-800 font-bold text-lg">Histórico de Pagamentos</Text>
+                                        <Text className="text-slate-500 text-sm">{currentInvoices.length} faturas pagas</Text>
+                                    </View>
                                 </View>
-                                <Text className="text-slate-700 font-bold text-lg flex-1">Copiar Código de Barras</Text>
-                            </TouchableOpacity>
+                            </View>
+                        </View>
 
-                            {/* Botão Segunda Via */}
+                        {/* Lista de Faturas Pagas */}
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingVertical: 8 }}
+                            className="flex-1"
+                        >
+                            {currentInvoices.length > 0 ? (
+                                currentInvoices.map((inv, index) => (
+                                    <TouchableOpacity
+                                        key={inv.id}
+                                        className={`mx-4 my-2 p-4 rounded-xl border ${selectedInvoice?.id === inv.id
+                                            ? 'bg-green-50 border-green-200'
+                                            : 'bg-slate-50 border-slate-100'
+                                            }`}
+                                        onPress={() => setSelectedInvoice(inv)}
+                                    >
+                                        <View className="flex-row justify-between items-center">
+                                            <View className="flex-row items-center flex-1">
+                                                <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${selectedInvoice?.id === inv.id ? 'bg-green-200' : 'bg-slate-200'
+                                                    }`}>
+                                                    <Ionicons
+                                                        name="receipt-outline"
+                                                        size={20}
+                                                        color={selectedInvoice?.id === inv.id ? '#16a34a' : '#64748b'}
+                                                    />
+                                                </View>
+                                                <View className="flex-1">
+                                                    <Text className={`font-semibold text-base ${selectedInvoice?.id === inv.id ? 'text-green-700' : 'text-slate-700'
+                                                        }`}>
+                                                        {getMonthYear(inv.data_vencimento)}
+                                                    </Text>
+                                                    <Text className="text-slate-500 text-xs">
+                                                        Pago em {formatDateShort(inv.data_pagamento || inv.data_vencimento)}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <View className="items-end">
+                                                <Text className={`font-bold text-base ${selectedInvoice?.id === inv.id ? 'text-green-700' : 'text-slate-800'
+                                                    }`}>
+                                                    {formatCurrency(inv.valor)}
+                                                </Text>
+                                                <View className="flex-row items-center mt-1">
+                                                    <View className="w-2 h-2 rounded-full bg-green-500 mr-1" />
+                                                    <Text className="text-green-600 text-xs font-medium">Pago</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))
+                            ) : (
+                                <View className="flex-1 justify-center items-center py-10">
+                                    <View className="w-16 h-16 bg-slate-100 rounded-full items-center justify-center mb-4">
+                                        <Ionicons name="wallet-outline" size={36} color="#94a3b8" />
+                                    </View>
+                                    <Text className="text-slate-500 text-center">
+                                        Nenhuma fatura paga encontrada.
+                                    </Text>
+                                </View>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            ) : (
+                <View className="flex-1 -mt-12 px-6 pb-6">
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                        {/* Mostrar botões de ação apenas para faturas não pagas */}
+                        {!isPaid && selectedInvoice && (
+                            <>
+                                {/* Botão Copiar Código de Barras */}
+                                <TouchableOpacity
+                                    className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    onPress={handleCopyBarcode}
+                                    disabled={!selectedInvoice}
+                                >
+                                    <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                        <Ionicons name="barcode-outline" size={24} color="#64748b" />
+                                    </View>
+                                    <Text className="text-slate-700 font-bold text-lg flex-1">Copiar Código de Barras</Text>
+                                </TouchableOpacity>
+
+                                {/* Botão Segunda Via */}
+                                <TouchableOpacity
+                                    className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    onPress={handleBoletoAction}
+                                    disabled={!selectedInvoice || loadingBoleto}
+                                >
+                                    <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                        {loadingBoleto ? (
+                                            <ActivityIndicator size="small" color="#64748b" />
+                                        ) : (
+                                            <Ionicons name="document-text-outline" size={24} color="#64748b" />
+                                        )}
+                                    </View>
+                                    <Text className="text-slate-700 font-bold text-lg flex-1">
+                                        {loadingBoleto ? 'Gerando PDF...' : 'Segunda via de Fatura'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Botão PIX */}
+                                <TouchableOpacity
+                                    className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    onPress={handlePix}
+                                    disabled={!selectedInvoice || loadingPix}
+                                >
+                                    <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                        {loadingPix ? (
+                                            <ActivityIndicator size="small" color="#64748b" />
+                                        ) : (
+                                            <Ionicons name="qr-code-outline" size={24} color="#64748b" />
+                                        )}
+                                    </View>
+                                    <Text className="text-slate-700 font-bold text-lg flex-1">
+                                        {loadingPix ? 'Buscando PIX...' : 'Copiar Código PIX'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+
+                        {/* Para faturas pagas, mostrar opção de baixar comprovante */}
+                        {isPaid && selectedInvoice && (
                             <TouchableOpacity
                                 className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
                                 onPress={handleBoletoAction}
                                 disabled={!selectedInvoice || loadingBoleto}
                             >
-                                <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                <View className="w-12 h-12 bg-green-100 rounded-xl items-center justify-center mr-4">
                                     {loadingBoleto ? (
-                                        <ActivityIndicator size="small" color="#64748b" />
+                                        <ActivityIndicator size="small" color="#22c55e" />
                                     ) : (
-                                        <Ionicons name="document-text-outline" size={24} color="#64748b" />
+                                        <Ionicons name="receipt-outline" size={24} color="#22c55e" />
                                     )}
                                 </View>
                                 <Text className="text-slate-700 font-bold text-lg flex-1">
-                                    {loadingBoleto ? 'Gerando PDF...' : 'Segunda via de Fatura'}
+                                    {loadingBoleto ? 'Gerando...' : 'Baixar Comprovante'}
                                 </Text>
                             </TouchableOpacity>
+                        )}
 
-                            {/* Botão PIX */}
-                            <TouchableOpacity
-                                className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
-                                onPress={handlePix}
-                                disabled={!selectedInvoice || loadingPix}
-                            >
-                                <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
-                                    {loadingPix ? (
-                                        <ActivityIndicator size="small" color="#64748b" />
-                                    ) : (
-                                        <Ionicons name="qr-code-outline" size={24} color="#64748b" />
-                                    )}
-                                </View>
-                                <Text className="text-slate-700 font-bold text-lg flex-1">
-                                    {loadingPix ? 'Buscando PIX...' : 'Copiar Código PIX'}
+                        {/* Dica de estado vazio */}
+                        {!selectedInvoice && !loading && (
+                            <View className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 items-center">
+                                <Ionicons
+                                    name="checkmark-done-circle-outline"
+                                    size={48}
+                                    color="#94a3b8"
+                                />
+                                <Text className="text-slate-500 text-center mt-4">
+                                    Parabéns! Você está em dia com todos os pagamentos.
                                 </Text>
-                            </TouchableOpacity>
-                        </>
-                    )}
-
-                    {/* Para faturas pagas, mostrar opção de baixar comprovante */}
-                    {isPaid && selectedInvoice && (
-                        <TouchableOpacity
-                            className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
-                            onPress={handleBoletoAction}
-                            disabled={!selectedInvoice || loadingBoleto}
-                        >
-                            <View className="w-12 h-12 bg-green-100 rounded-xl items-center justify-center mr-4">
-                                {loadingBoleto ? (
-                                    <ActivityIndicator size="small" color="#22c55e" />
-                                ) : (
-                                    <Ionicons name="receipt-outline" size={24} color="#22c55e" />
-                                )}
                             </View>
-                            <Text className="text-slate-700 font-bold text-lg flex-1">
-                                {loadingBoleto ? 'Gerando...' : 'Baixar Comprovante'}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {/* Dica de estado vazio */}
-                    {!selectedInvoice && !loading && (
-                        <View className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 items-center">
-                            <Ionicons
-                                name={activeTab === 'pagas' ? 'wallet-outline' : 'checkmark-done-circle-outline'}
-                                size={48}
-                                color="#94a3b8"
-                            />
-                            <Text className="text-slate-500 text-center mt-4">
-                                {activeTab === 'pagas'
-                                    ? 'Quando você pagar suas faturas, elas aparecerão aqui.'
-                                    : 'Parabéns! Você está em dia com todos os pagamentos.'}
-                            </Text>
-                        </View>
-                    )}
-                </ScrollView>
-            </View>
+                        )}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* Modal Seletor */}
             <Modal
@@ -581,6 +675,6 @@ export default function FaturasScreen() {
                     </SafeAreaView>
                 </View>
             </Modal>
-        </View>
+        </View >
     );
 }

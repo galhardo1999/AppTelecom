@@ -10,23 +10,55 @@ interface FAQItem {
     iconColor: string;
     bgColor: string;
     steps: string[];
+    whatsappMessage: string;
 }
 
 const faqData: FAQItem[] = [
+    {
+        question: 'Como acessar a Câmera',
+        icon: 'videocam-outline',
+        iconColor: '#7c3aed',
+        bgColor: 'bg-purple-50',
+        whatsappMessage: 'Olá, Estou tendo dificuldades para acessar minha camera, poderia me ajudar?',
+        steps: [
+            '1. Baixe o aplicativo ICSee',
+            '   • Android: Acesse a Google Play Store',
+            '   • iPhone: Acesse a App Store',
+            '   • Busque por "ICSee"',
+            '',
+            '2. Configuração inicial',
+            '   • Abra o app ICSee após instalar',
+            '   • Crie uma conta ou faça login',
+            '   • Permita acesso à câmera e notificações',
+            '',
+            '3. Adicionar sua câmera',
+            '   • Toque no botão "+" no canto superior',
+            '   • Selecione "Adicionar dispositivo"',
+            '   • Escolha "Câmera WiFi" ou "Câmera IP"',
+            '   • Escaneie o QR Code na câmera ou insira o ID manualmente',
+            '',
+            '4.Conectar à rede WiFi',
+            '   • Certifique-se de estar na mesma rede WiFi da câmera',
+            '   • Digite a senha do WiFi quando solicitado',
+            '   • Aguarde a câmera conectar',
+            '',
+            '5. Pronto!',
+            '   • Sua câmera aparecerá na tela inicial',
+            '   • Toque nela para visualizar em tempo real',
+            '   • Configure alertas de movimento nas configurações',
+        ],
+    },
     {
         question: 'Minha internet está lenta',
         icon: 'speedometer-outline',
         iconColor: '#f59e0b',
         bgColor: 'bg-amber-50',
+        whatsappMessage: 'Olá, Minha internet está muito lenta, poderia me ajudar?',
         steps: [
             '1. Reinicie seu roteador/modem desligando-o da tomada por 30 segundos',
             '2. Aguarde 2 minutos após religá-lo para a conexão estabilizar',
-            '3. Conecte seu dispositivo diretamente ao roteador via cabo de rede (se possível)',
-            '4. Faça um teste de velocidade em speedtest.net ou fast.com',
-            '5. Verifique se há muitos dispositivos conectados à sua rede',
-            '6. Evite usar a internet em horários de pico (19h às 23h)',
-            '7. Posicione o roteador em local central e elevado da casa',
-            '8. Se o problema persistir, entre em contato com nosso suporte técnico',
+            '3. Posicione o roteador em local central e elevado da casa',
+            '4. Se o problema persistir, entre em contato com nosso suporte técnico',
         ],
     },
     {
@@ -34,6 +66,7 @@ const faqData: FAQItem[] = [
         icon: 'card-outline',
         iconColor: '#22c55e',
         bgColor: 'bg-green-50',
+        whatsappMessage: 'Olá, Gostaria de pagar minha Fatura, poderia me ajudar?',
         steps: [
             '1. Acesse a aba "Faturas" no menu inferior do app',
             '2. Selecione a fatura que deseja pagar',
@@ -50,6 +83,7 @@ const faqData: FAQItem[] = [
         icon: 'document-text-outline',
         iconColor: '#3b82f6',
         bgColor: 'bg-blue-50',
+        whatsappMessage: 'Olá, Gostaria da segunda via do boleto, poderia me ajudar?',
         steps: [
             '1. Acesse a aba "Faturas" no menu inferior do app',
             '2. Localize a fatura desejada na lista',
@@ -73,8 +107,9 @@ export default function SuporteScreen() {
         setExpandedIndex(expandedIndex === index ? null : index);
     };
 
-    const openWhatsApp = () => {
-        Linking.openURL('https://wa.me/551808008710606');
+    const openWhatsApp = (message?: string) => {
+        const text = message ? encodeURIComponent(message) : '';
+        Linking.openURL(`https://wa.me/551808008710606${text ? `?text=${text}` : ''}`);
     };
 
     const callSupport = () => {
@@ -105,7 +140,7 @@ export default function SuporteScreen() {
                         <Text className="text-slate-800 text-lg font-bold mb-4">Canais de Atendimento</Text>
 
                         <TouchableOpacity
-                            onPress={openWhatsApp}
+                            onPress={() => openWhatsApp('Olá, vim pelo aplicativo, poderia me ajudar?')}
                             className="flex-row items-center p-4 border border-green-100 bg-green-50 rounded-xl mb-3 active:bg-green-100"
                         >
                             <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
@@ -171,7 +206,7 @@ export default function SuporteScreen() {
 
                                     {/* Contact Support Button */}
                                     <TouchableOpacity
-                                        onPress={openWhatsApp}
+                                        onPress={() => openWhatsApp(faq.whatsappMessage)}
                                         className="mt-3 bg-purple-50 border border-purple-200 rounded-lg py-3 px-4 flex-row items-center justify-center"
                                     >
                                         <Ionicons name="chatbubble-ellipses-outline" size={18} color="#7c3aed" />
@@ -184,16 +219,6 @@ export default function SuporteScreen() {
                         </View>
                     ))}
 
-                    {/* Additional Help */}
-                    <View className="bg-purple-50 rounded-xl p-4 mt-4 border border-purple-100">
-                        <View className="flex-row items-center mb-2">
-                            <Ionicons name="bulb-outline" size={18} color="#7c3aed" />
-                            <Text className="text-purple-800 font-semibold text-sm ml-2">Dica Rápida</Text>
-                        </View>
-                        <Text className="text-purple-700 text-xs leading-5">
-                            A maioria dos problemas de conexão pode ser resolvida reiniciando o roteador por 30 segundos.
-                        </Text>
-                    </View>
                 </ScrollView>
             </View>
         </View>

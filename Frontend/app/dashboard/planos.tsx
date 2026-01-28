@@ -4,7 +4,7 @@ import { File as ExpoFile, Paths } from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { ixcApi } from '../../src/services/api';
@@ -14,9 +14,11 @@ import { formatCurrency } from '../../src/utils/formatters';
 export default function PlanoScreen() {
     const { user } = useAuth();
     const [contracts, setContracts] = useState<Contract[]>([]);
+    const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [loadingContract, setLoadingContract] = useState(false);
+    const [showContractPicker, setShowContractPicker] = useState(false);
 
     useEffect(() => {
         loadContracts();
@@ -28,6 +30,11 @@ export default function PlanoScreen() {
             setLoading(true);
             const data = await ixcApi.getClientContracts(user.id);
             setContracts(data);
+            // Selecionar o primeiro contrato ativo por padrão
+            const activeContract = data.find((c: Contract) => c.status === 'A') || data[0];
+            if (activeContract) {
+                setSelectedContractId(activeContract.id);
+            }
         } catch (error) {
             console.error('Error loading contracts:', error);
         } finally {
@@ -73,36 +80,27 @@ export default function PlanoScreen() {
         }
     };
 
-    // Obter contrato principal (primeiro ativo)
-    const mainContract = contracts.find(c => c.status === 'A') || contracts[0];
+    const selectContract = (id: string) => {
+        setSelectedContractId(id);
+        setShowContractPicker(false);
+    };
+
+    // Contrato selecionado atualmente
+    const selectedContract = contracts.find(c => c.id === selectedContractId);
 
     // Obter informações de status
     const getStatusInfo = (status: string) => {
         switch (status) {
             case 'A':
-                return { label: 'Ativo', color: 'bg-green-100', textColor: 'text-green-700' };
+                return { label: 'Ativo', color: 'bg-green-100', textColor: 'text-green-700', dotColor: 'bg-green-500' };
             case 'I':
-                return { label: 'Inativo', color: 'bg-red-100', textColor: 'text-red-700' };
+                return { label: 'Inativo', color: 'bg-red-100', textColor: 'text-red-700', dotColor: 'bg-red-500' };
             case 'B':
-                return { label: 'Bloqueado', color: 'bg-orange-100', textColor: 'text-orange-700' };
+                return { label: 'Bloqueado', color: 'bg-orange-100', textColor: 'text-orange-700', dotColor: 'bg-orange-500' };
             case 'C':
-                return { label: 'Cancelado', color: 'bg-gray-100', textColor: 'text-gray-700' };
+                return { label: 'Cancelado', color: 'bg-gray-100', textColor: 'text-gray-700', dotColor: 'bg-gray-500' };
             default:
-                return { label: status, color: 'bg-slate-100', textColor: 'text-slate-700' };
-        }
-    };
-
-    // Obter informações de status da internet
-    const getInternetStatusInfo = (status: string) => {
-        switch (status) {
-            case 'A':
-                return { label: 'Conectado', icon: 'wifi' as const };
-            case 'D':
-                return { label: 'Desconectado', icon: 'wifi-outline' as const };
-            case 'B':
-                return { label: 'Bloqueado', icon: 'lock-closed' as const };
-            default:
-                return { label: status || 'N/A', icon: 'help-circle' as const };
+                return { label: status, color: 'bg-slate-100', textColor: 'text-slate-700', dotColor: 'bg-slate-500' };
         }
     };
 
@@ -146,7 +144,7 @@ export default function PlanoScreen() {
                     <View className="flex-1 justify-center items-center">
                         <ActivityIndicator color="#7c3aed" size="large" />
                     </View>
-                ) : mainContract ? (
+                ) : selectedContract ? (
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 30 }}
@@ -154,44 +152,51 @@ export default function PlanoScreen() {
                             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#7c3aed']} />
                         }
                     >
-                        {/* Main Plan Card */}
-                        <View className="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
-                            {/* Plan Header */}
-                            <LinearGradient
-                                colors={['#7c3aed', '#6d28d9']}
-                                className="p-5"
-                            >
-                                <View className="flex-row justify-between items-start mb-3">
-                                    <View className="flex-1">
-                                        <Text className="text-white/70 text-sm mb-1">Plano Contratado</Text>
-                                        <Text className="text-white text-2xl font-bold">
-                                            {mainContract.plano || mainContract.plano_nome || 'Internet Fibra'}
-                                        </Text>
+                        {/* Detalhes do Contrato Selecionado */}
+                        <View className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4 border border-slate-100">
+                            {/* Header do Contrato com seletor */}
+                            <View className="bg-purple-50 px-5 py-4 border-b border-purple-100">
+                                <View className="flex-row justify-between items-center">
+                                    <View className="flex-row items-center flex-1">
+                                        <View className="w-12 h-12 bg-purple-100 rounded-xl items-center justify-center mr-3">
+                                            <Ionicons name="document-text" size={24} color="#7c3aed" />
+                                        </View>
+                                        <View className="flex-1">
+                                            {/* Botão dropdown se tiver mais de 1 contrato */}
+                                            {contracts.length > 1 ? (
+                                                <TouchableOpacity
+                                                    onPress={() => setShowContractPicker(true)}
+                                                    className="flex-row items-center"
+                                                >
+                                                    <Text className="text-slate-800 text-lg font-bold">
+                                                        Contrato #{selectedContract.id}
+                                                    </Text>
+                                                    <Ionicons name="chevron-down" size={20} color="#7c3aed" style={{ marginLeft: 4 }} />
+                                                </TouchableOpacity>
+                                            ) : (
+                                                <Text className="text-slate-800 text-lg font-bold">
+                                                    Contrato #{selectedContract.id}
+                                                </Text>
+                                            )}
+                                        </View>
                                     </View>
-                                    <View className={`${getStatusInfo(mainContract.status).color} px-3 py-1.5 rounded-full`}>
-                                        <Text className={`${getStatusInfo(mainContract.status).textColor} font-bold text-xs`}>
-                                            {getStatusInfo(mainContract.status).label}
-                                        </Text>
+                                    <View className="items-end">
+                                        <View className={`flex-row items-center px-3 py-1.5 rounded-full ${getStatusInfo(selectedContract.status).color}`}>
+                                            <View className={`w-2 h-2 rounded-full mr-2 ${getStatusInfo(selectedContract.status).dotColor}`} />
+                                            <Text className={`text-sm font-bold ${getStatusInfo(selectedContract.status).textColor}`}>
+                                                {getStatusInfo(selectedContract.status).label}
+                                            </Text>
+                                        </View>
+                                        {contracts.length > 1 && (
+                                            <Text className="text-slate-400 text-xs mt-1">
+                                                {contracts.length} contratos
+                                            </Text>
+                                        )}
                                     </View>
                                 </View>
+                            </View>
 
-                                {/* Status da Conexão */}
-                                <View className="bg-white/10 rounded-xl py-3 px-4 flex-row items-center mt-2">
-                                    <Ionicons
-                                        name={getInternetStatusInfo(mainContract.status_internet).icon}
-                                        size={24}
-                                        color="white"
-                                    />
-                                    <View className="ml-3">
-                                        <Text className="text-white/70 text-xs">Status da Conexão</Text>
-                                        <Text className="text-white text-lg font-bold">
-                                            {getInternetStatusInfo(mainContract.status_internet).label}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </LinearGradient>
-
-                            {/* Plan Details */}
+                            {/* Informações do Contrato */}
                             <View className="p-5">
                                 <InfoRow
                                     icon="person-outline"
@@ -199,82 +204,55 @@ export default function PlanoScreen() {
                                     value={user?.razao || 'Cliente'}
                                 />
 
-                                {mainContract.data_ativacao && (
+                                {selectedContract.data_ativacao && (
                                     <InfoRow
                                         icon="calendar-outline"
                                         label="Data de Ativação"
-                                        value={new Date(mainContract.data_ativacao).toLocaleDateString('pt-BR')}
+                                        value={new Date(selectedContract.data_ativacao).toLocaleDateString('pt-BR')}
                                     />
                                 )}
 
                                 <InfoRow
-                                    icon="document-text-outline"
-                                    label="Número do Contrato"
-                                    value={`#${mainContract.id}`}
-                                />
-
-                                <InfoRow
-                                    icon="cash-outline"
-                                    label="Valor Mensal"
-                                    value={formatCurrency(mainContract.valor_contrato || mainContract.valor || '0')}
-                                    valueColor="text-purple-700"
-                                />
-
-                                <InfoRow
                                     icon="card-outline"
                                     label="Forma de Pagamento"
-                                    value={mainContract.forma_pagamento || 'Boleto/PIX'}
+                                    value={selectedContract.forma_pagamento || 'Boleto/PIX'}
                                 />
-                            </View>
-                        </View>
 
-                        {/* Location Card */}
-                        <View className="bg-white rounded-2xl p-5 shadow-md mb-4">
-                            <View className="flex-row items-center mb-4">
-                                <View className="w-10 h-10 bg-blue-50 rounded-xl items-center justify-center mr-3">
-                                    <Ionicons name="location" size={20} color="#3b82f6" />
-                                </View>
-                                <Text className="text-slate-800 font-bold text-lg">Localidade</Text>
-                            </View>
-                            <Text className="text-slate-600 text-base leading-6">
-                                {mainContract.endereco || user?.endereco || 'Endereço não informado'}
-                            </Text>
-                        </View>
-
-                        {/* Download Contract Button */}
-                        <TouchableOpacity
-                            className="bg-purple-600 rounded-2xl p-5 shadow-md mb-4 flex-row items-center justify-center"
-                            onPress={() => handleDownloadContract(mainContract.id)}
-                            disabled={loadingContract}
-                        >
-                            {loadingContract ? (
-                                <ActivityIndicator color="white" size="small" />
-                            ) : (
-                                <>
-                                    <View className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center mr-3">
-                                        <Ionicons name="document-text" size={22} color="white" />
+                                {(selectedContract.endereco || user?.endereco) && (
+                                    <View className="py-3 border-b border-slate-100">
+                                        <View className="flex-row items-center">
+                                            <View className="w-10 h-10 bg-purple-50 rounded-xl items-center justify-center mr-3">
+                                                <Ionicons name="location" size={20} color="#7c3aed" />
+                                            </View>
+                                            <View className="flex-1">
+                                                <Text className="text-slate-500 text-xs uppercase tracking-wide">Endereço</Text>
+                                                <Text className="font-semibold text-base text-slate-800">
+                                                    {selectedContract.endereco || user?.endereco}
+                                                </Text>
+                                            </View>
+                                        </View>
                                     </View>
-                                    <Text className="text-white font-bold text-lg">Meu Contrato</Text>
-                                    <View className="flex-1" />
-                                    <Ionicons name="download-outline" size={24} color="white" />
-                                </>
-                            )}
-                        </TouchableOpacity>
+                                )}
 
-                        {/* Multiple contracts notice */}
-                        {contracts.length > 1 && (
-                            <View className="bg-purple-50 rounded-xl p-4 border border-purple-100">
-                                <View className="flex-row items-center">
-                                    <Ionicons name="information-circle" size={20} color="#7c3aed" />
-                                    <Text className="text-purple-700 font-medium ml-2">
-                                        Você possui {contracts.length} contratos
-                                    </Text>
-                                </View>
-                                <Text className="text-purple-600 text-sm mt-1 ml-7">
-                                    Mostrando o contrato principal ativo.
-                                </Text>
+                                {/* Botão Download PDF - no final */}
+                                <TouchableOpacity
+                                    onPress={() => handleDownloadContract(selectedContract.id)}
+                                    disabled={loadingContract}
+                                    className="bg-purple-600 rounded-xl py-4 mt-4 flex-row items-center justify-center active:bg-purple-700"
+                                >
+                                    {loadingContract ? (
+                                        <ActivityIndicator color="white" size="small" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name="document-attach" size={22} color="white" />
+                                            <Text className="text-white font-bold text-base ml-3">
+                                                Baixar Contrato em PDF
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
                             </View>
-                        )}
+                        </View>
                     </ScrollView>
                 ) : (
                     <View className="flex-1 justify-center items-center">
@@ -288,6 +266,72 @@ export default function PlanoScreen() {
                     </View>
                 )}
             </View>
+
+            {/* Modal de Seleção de Contrato */}
+            <Modal
+                visible={showContractPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowContractPicker(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View className="bg-white rounded-t-3xl">
+                        <View className="p-5 border-b border-slate-100">
+                            <View className="flex-row justify-between items-center">
+                                <Text className="text-xl font-bold text-slate-800">Selecione o Contrato</Text>
+                                <TouchableOpacity onPress={() => setShowContractPicker(false)}>
+                                    <Ionicons name="close" size={24} color="#64748b" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                        <ScrollView className="max-h-80">
+                            {contracts.map((contract) => {
+                                const isSelected = contract.id === selectedContractId;
+                                const statusInfo = getStatusInfo(contract.status);
+                                return (
+                                    <TouchableOpacity
+                                        key={contract.id}
+                                        onPress={() => selectContract(contract.id)}
+                                        className={`flex-row items-center p-4 border-b border-slate-100 ${isSelected ? 'bg-purple-50' : 'bg-white'
+                                            }`}
+                                    >
+                                        <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${isSelected ? 'bg-purple-600' : 'bg-slate-100'
+                                            }`}>
+                                            <Ionicons
+                                                name="document-text"
+                                                size={20}
+                                                color={isSelected ? 'white' : '#64748b'}
+                                            />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>
+                                                Contrato #{contract.id}
+                                            </Text>
+                                            <View className="flex-row items-center mt-1">
+                                                <View className={`w-2 h-2 rounded-full mr-2 ${statusInfo.dotColor}`} />
+                                                <Text className={`text-sm ${statusInfo.textColor}`}>
+                                                    {statusInfo.label}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        {isSelected && (
+                                            <Ionicons name="checkmark-circle" size={24} color="#7c3aed" />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                        <View className="p-5">
+                            <TouchableOpacity
+                                onPress={() => setShowContractPicker(false)}
+                                className="bg-slate-100 rounded-xl py-4 items-center"
+                            >
+                                <Text className="text-slate-600 font-semibold">Cancelar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

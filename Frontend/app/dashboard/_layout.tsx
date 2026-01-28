@@ -72,7 +72,6 @@ export default function DashboardLayout() {
 
             {/* Hidden routes */}
             <Tabs.Screen name="contract" options={{ href: null }} />
-            <Tabs.Screen name="consumption" options={{ href: null }} />
 
             {/* If settings still refers to the file name, it is now perfil. 
                 If there are any other files, ensure they are hidden if not needed in tabs.

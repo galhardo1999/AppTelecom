@@ -25,9 +25,9 @@ export default function HomeScreen() {
 
     const quickActions = [
         { title: 'Faturas', icon: 'receipt-outline' as const, color: '#a855f7', route: '/dashboard/faturas' },
-        { title: 'Planos', icon: 'list-outline' as const, color: '#3b82f6', route: '/dashboard/planos' },
+        { title: 'Meu Plano', icon: 'list-outline' as const, color: '#3b82f6', route: '/dashboard/planos' },
         { title: 'Suporte', icon: 'headset-outline' as const, color: '#22c55e', route: '/dashboard/suporte' },
-        { title: 'Consumo', icon: 'speedometer-outline' as const, color: '#f59e0b', route: '/dashboard/consumption' },
+        { title: 'Perfil', icon: 'person-outline' as const, color: '#f59e0b', route: '/dashboard/perfil' },
     ];
 
     return (

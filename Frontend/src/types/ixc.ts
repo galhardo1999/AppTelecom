@@ -4,7 +4,9 @@ export interface Invoice {
     descricao: string;
     valor: string; // IXC often returns values as strings, e.g., "100.00"
     data_vencimento: string;
+    data_pagamento?: string; // Data de pagamento (para faturas pagas)
     status: string; // 'A' for Aberto, 'P' for Pago, etc.
+    status_classificado?: string; // Status classificado pelo backend
     linha_digitavel?: string; // For Boleto
     link_boleto?: string; // URL to PDF
     pix_copia_cola?: string; // PIX copy-paste code
@@ -27,8 +29,13 @@ export interface Contract {
     id_plano: string;
     plano?: string;
     endereco?: string;
+    numero?: string;
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
     plano_nome?: string;
     valor_contrato?: string;
+    contrato_pdf?: string; // URL do contrato em PDF
 }
 
 export interface RadUsuario {
