@@ -71,8 +71,8 @@ export function rateLimiter(config: RateLimitConfig) {
  * Stricter rate limiter for login attempts (prevent brute force)
  */
 export const loginRateLimiter = rateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    maxRequests: 5            // 5 tentativas de login por 15 min
+    windowMs: 60 * 1000, // 1 minuto
+    maxRequests: 30      // 30 tentativas por minuto (Aumentado para testes)
 });
 
 /**

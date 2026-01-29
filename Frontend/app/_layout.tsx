@@ -1,8 +1,11 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { ActivityIndicator, Image, View, LogBox } from 'react-native';
 import '../global.css'; // Importar estilos globais do NativeWind
+
+// Ignorar aviso de depreciação do SafeAreaView (vem de bibliotecas terceiras)
+LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ContractProvider } from '../src/context/ContractContext';
 import { queryClient } from '../src/lib/queryClient';

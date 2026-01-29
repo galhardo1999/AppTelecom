@@ -48,6 +48,11 @@ app.post('/auth/login', loginRateLimiter, async (c) => {
             return c.json({ error: 'Email não encontrado' }, 401);
         }
 
+        // Verificar se cliente está ativo
+        if (client.ativo === 'N') {
+            return c.json({ error: 'Não foi possível acessar sua conta. Entre em contato com o suporte no número 0800 871 0606' }, 403);
+        }
+
         // Validar senha
         if (!client.senha) {
             return c.json({ error: 'Cadastro sem senha. Contate o suporte.' }, 401);

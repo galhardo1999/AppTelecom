@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AlertType, CustomAlert } from '../src/components/CustomAlert';
 import { useAuth } from '../src/context/AuthContext';
 import { getBiometryIcon, getBiometryLabel, useBiometrics } from '../src/hooks/useBiometrics';
 
@@ -30,6 +31,16 @@ export default function LoginScreen() {
     const [activeField, setActiveField] = useState<string | null>(null);
     const [rememberEmail, setRememberEmail] = useState(false);
     const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({
+        title: '',
+        message: '',
+        type: 'info' as AlertType,
+        showSupport: false,
+        actionLabel: 'OK'
+    });
 
     // Hook de biometria
     const {
@@ -77,9 +88,20 @@ export default function LoginScreen() {
         }
     };
 
+    const showAlert = (title: string, message: string, type: AlertType = 'info', showSupport = false) => {
+        setAlertConfig({
+            title,
+            message,
+            type,
+            showSupport,
+            actionLabel: showSupport ? 'Fechar' : 'OK'
+        });
+        setAlertVisible(true);
+    };
+
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Atenção', 'Por favor, preencha todos os campos.');
+            showAlert('Atenção', 'Por favor, preencha todos os campos.', 'warning');
             return;
         }
 
@@ -99,7 +121,18 @@ export default function LoginScreen() {
             }
 
         } catch (error: any) {
-            Alert.alert('Erro de Acesso', error.message);
+            const isBlocked = error.message?.toLowerCase().includes('bloqueado');
+
+            if (isBlocked) {
+                showAlert(
+                    'Falha no Acesso',
+                    'No momento, o acesso à sua conta não está disponível. Para sua segurança, pedimos que entre em contato com nosso suporte técnico para regularizar a situação.',
+                    'error',
+                    true
+                );
+            } else {
+                showAlert('Erro de Acesso', error.message, 'error');
+            }
         } finally {
             setLoading(false);
         }
@@ -108,9 +141,10 @@ export default function LoginScreen() {
     const handleEnableBiometrics = async () => {
         const success = await enableBiometrics(email, password);
         if (success) {
-            Alert.alert(
+            showAlert(
                 'Sucesso!',
-                `${getBiometryLabel(biometryType)} ativado. No próximo login você poderá usar biometria.`
+                `${getBiometryLabel(biometryType)} ativado. No próximo login você poderá usar biometria.`,
+                'success'
             );
         }
         setShowBiometricPrompt(false);
@@ -122,6 +156,16 @@ export default function LoginScreen() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             <StatusBar style="dark" hidden={true} />
+
+            <CustomAlert
+                visible={alertVisible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                showSupportButton={alertConfig.showSupport}
+                actionLabel={alertConfig.actionLabel}
+                onClose={() => setAlertVisible(false)}
+            />
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

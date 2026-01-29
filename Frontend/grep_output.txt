@@ -1,0 +1,23 @@
+./app/index.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/index.tsx:        <SafeAreaView className="flex-1 bg-white">
+./app/index.tsx:        </SafeAreaView>
+./app/dashboard/index.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/dashboard/index.tsx:                <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
+./app/dashboard/index.tsx:                </SafeAreaView>
+./app/dashboard/planos.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/dashboard/planos.tsx:                <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6 pt-4">
+./app/dashboard/planos.tsx:                </SafeAreaView>
+./app/dashboard/faturas.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/dashboard/faturas.tsx:                <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
+./app/dashboard/faturas.tsx:                </SafeAreaView>
+./app/dashboard/faturas.tsx:                    <SafeAreaView className="flex-1" edges={['top']}>
+./app/dashboard/faturas.tsx:                    </SafeAreaView>
+./app/dashboard/suporte.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/dashboard/suporte.tsx:                <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6 pt-4">
+./app/dashboard/suporte.tsx:                </SafeAreaView>
+./app/dashboard/contract.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/dashboard/contract.tsx:                <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
+./app/dashboard/contract.tsx:                </SafeAreaView>
+./app/dashboard/perfil.tsx:import { SafeAreaView } from 'react-native-safe-area-context';
+./app/dashboard/perfil.tsx:                <SafeAreaView edges={['top']} className="flex-1 px-6">
+./app/dashboard/perfil.tsx:                </SafeAreaView>
