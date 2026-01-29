@@ -146,10 +146,7 @@ export const ixcService = {
      */
     getPaidInvoices: async (clientId: string) => {
         try {
-            console.log('[PAID] ====================================');
-            console.log('[PAID] Fetching paid invoices for client:', clientId);
-
-            // Estratégia 1: Buscar todas as faturas do cliente para ver os status existentes
+            // Buscar todas as faturas do cliente
             const allResponse = await ixcClient.post('/fn_areceber', {
                 qtype: 'fn_areceber.id_cliente',
                 query: clientId,
@@ -160,15 +157,6 @@ export const ixcService = {
             });
 
             const allInvoices = allResponse.data?.registros || [];
-            console.log('[PAID] Total de faturas do cliente:', allInvoices.length);
-
-            // Logar todos os status únicos encontrados
-            const statusCounts: { [key: string]: number } = {};
-            allInvoices.forEach((inv: any) => {
-                const s = inv.status || 'undefined';
-                statusCounts[s] = (statusCounts[s] || 0) + 1;
-            });
-            console.log('[PAID] Status encontrados:', JSON.stringify(statusCounts));
 
             // Filtrar faturas pagas localmente
             // Status possíveis para "pago": P, R (Recebido), L (Liquidado)
@@ -180,11 +168,12 @@ export const ixcService = {
                 return isPaid || hasPaymentDate;
             });
 
-            console.log('[PAID] Faturas pagas encontradas:', paidInvoices.length);
-            if (paidInvoices.length > 0) {
-                console.log('[PAID] Exemplo de fatura paga:', JSON.stringify(paidInvoices[0], null, 2));
-            }
-            console.log('[PAID] ====================================');
+            // Ordenar por data de pagamento (mais recente primeiro)
+            paidInvoices.sort((a: any, b: any) => {
+                const dateA = new Date(a.data_pagamento || a.data_vencimento);
+                const dateB = new Date(b.data_pagamento || b.data_vencimento);
+                return dateB.getTime() - dateA.getTime();
+            });
 
             // Adicionar classificação para consistência com outras faturas
             return paidInvoices.map((inv: any) => ({
@@ -275,6 +264,7 @@ export const ixcService = {
             // Adicionar dados de endereço aos contratos
             return contracts.map((contract: any) => ({
                 ...contract,
+                descricao_aux_plano_venda: contract.descricao_aux_plano_venda || '',
                 endereco: clientData?.endereco || contract.endereco || '',
                 numero: clientData?.numero || '',
                 bairro: clientData?.bairro || '',

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, Image, View } from 'react-native';
 import '../global.css'; // Importar estilos globais do NativeWind
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { ContractProvider } from '../src/context/ContractContext';
 import { queryClient } from '../src/lib/queryClient';
 
 // Componente separado para lidar com lógica de navegação dentro do Provider
@@ -55,9 +56,12 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RootNavigator />
+        <ContractProvider>
+          <RootNavigator />
+        </ContractProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
 }
+
 

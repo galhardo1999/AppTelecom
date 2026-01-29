@@ -3,49 +3,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
+import { useContract } from '../../src/context/ContractContext';
 import { ixcApi } from '../../src/services/api';
 import { Contract } from '../../src/types/ixc';
 import { formatCurrency } from '../../src/utils/formatters';
 
 export default function PlanoScreen() {
     const { user } = useAuth();
-    const [contracts, setContracts] = useState<Contract[]>([]);
-    const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { contracts, selectedContract, setSelectedContract, loading } = useContract();
     const [refreshing, setRefreshing] = useState(false);
     const [loadingContract, setLoadingContract] = useState(false);
     const [showContractPicker, setShowContractPicker] = useState(false);
 
-    useEffect(() => {
-        loadContracts();
-    }, []);
-
-    const loadContracts = async () => {
-        if (!user?.id) return;
-        try {
-            setLoading(true);
-            const data = await ixcApi.getClientContracts(user.id);
-            setContracts(data);
-            // Selecionar o primeiro contrato ativo por padrão
-            const activeContract = data.find((c: Contract) => c.status === 'A') || data[0];
-            if (activeContract) {
-                setSelectedContractId(activeContract.id);
-            }
-        } catch (error) {
-            console.error('Error loading contracts:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const onRefresh = async () => {
         setRefreshing(true);
-        await loadContracts();
-        setRefreshing(false);
+        // O contexto não tem refresh, mas podemos simular um delay
+        setTimeout(() => setRefreshing(false), 500);
     };
 
     const handleDownloadContract = async (contractId: string) => {
@@ -80,13 +57,10 @@ export default function PlanoScreen() {
         }
     };
 
-    const selectContract = (id: string) => {
-        setSelectedContractId(id);
+    const selectContract = (contract: Contract) => {
+        setSelectedContract(contract);
         setShowContractPicker(false);
     };
-
-    // Contrato selecionado atualmente
-    const selectedContract = contracts.find(c => c.id === selectedContractId);
 
     // Obter informações de status
     const getStatusInfo = (status: string) => {
@@ -161,7 +135,7 @@ export default function PlanoScreen() {
                                         <View className="w-12 h-12 bg-purple-100 rounded-xl items-center justify-center mr-3">
                                             <Ionicons name="document-text" size={24} color="#7c3aed" />
                                         </View>
-                                        <View className="flex-1">
+                                        <View>
                                             {/* Botão dropdown se tiver mais de 1 contrato */}
                                             {contracts.length > 1 ? (
                                                 <TouchableOpacity
@@ -180,24 +154,31 @@ export default function PlanoScreen() {
                                             )}
                                         </View>
                                     </View>
-                                    <View className="items-end">
+                                    <View className="flex-row items-center">
+                                        {contracts.length > 1 && (
+                                            <Text className="text-slate-400 text-xs ml-4 mr-3">
+                                                {contracts.length} contratos
+                                            </Text>
+                                        )}
                                         <View className={`flex-row items-center px-3 py-1.5 rounded-full ${getStatusInfo(selectedContract.status).color}`}>
                                             <View className={`w-2 h-2 rounded-full mr-2 ${getStatusInfo(selectedContract.status).dotColor}`} />
                                             <Text className={`text-sm font-bold ${getStatusInfo(selectedContract.status).textColor}`}>
                                                 {getStatusInfo(selectedContract.status).label}
                                             </Text>
                                         </View>
-                                        {contracts.length > 1 && (
-                                            <Text className="text-slate-400 text-xs mt-1">
-                                                {contracts.length} contratos
-                                            </Text>
-                                        )}
                                     </View>
                                 </View>
                             </View>
 
                             {/* Informações do Contrato */}
                             <View className="p-5">
+                                {/* Meu Plano */}
+                                <InfoRow
+                                    icon="wifi-outline"
+                                    label="Meu Plano"
+                                    value={selectedContract.contrato || selectedContract.id}
+                                />
+
                                 <InfoRow
                                     icon="person-outline"
                                     label="Titular"
@@ -212,26 +193,31 @@ export default function PlanoScreen() {
                                     />
                                 )}
 
-                                <InfoRow
-                                    icon="card-outline"
-                                    label="Forma de Pagamento"
-                                    value={selectedContract.forma_pagamento || 'Boleto/PIX'}
-                                />
-
+                                {/* Endereço concatenado com número */}
                                 {(selectedContract.endereco || user?.endereco) && (
-                                    <View className="py-3 border-b border-slate-100">
-                                        <View className="flex-row items-center">
-                                            <View className="w-10 h-10 bg-purple-50 rounded-xl items-center justify-center mr-3">
-                                                <Ionicons name="location" size={20} color="#7c3aed" />
-                                            </View>
-                                            <View className="flex-1">
-                                                <Text className="text-slate-500 text-xs uppercase tracking-wide">Endereço</Text>
-                                                <Text className="font-semibold text-base text-slate-800">
-                                                    {selectedContract.endereco || user?.endereco}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    </View>
+                                    <InfoRow
+                                        icon="location-outline"
+                                        label="Endereço"
+                                        value={`${selectedContract.endereco || user?.endereco}${selectedContract.numero ? `, ${selectedContract.numero}` : ''}`}
+                                    />
+                                )}
+
+                                {/* Bairro */}
+                                {selectedContract.bairro && (
+                                    <InfoRow
+                                        icon="map-outline"
+                                        label="Bairro"
+                                        value={selectedContract.bairro}
+                                    />
+                                )}
+
+                                {/* Cidade */}
+                                {selectedContract.cidade && (
+                                    <InfoRow
+                                        icon="business-outline"
+                                        label="Cidade"
+                                        value={`${selectedContract.cidade}${selectedContract.estado ? ` - ${selectedContract.estado}` : ''}`}
+                                    />
                                 )}
 
                                 {/* Botão Download PDF - no final */}
@@ -286,12 +272,12 @@ export default function PlanoScreen() {
                         </View>
                         <ScrollView className="max-h-80">
                             {contracts.map((contract) => {
-                                const isSelected = contract.id === selectedContractId;
+                                const isSelected = contract.id === selectedContract?.id;
                                 const statusInfo = getStatusInfo(contract.status);
                                 return (
                                     <TouchableOpacity
                                         key={contract.id}
-                                        onPress={() => selectContract(contract.id)}
+                                        onPress={() => selectContract(contract)}
                                         className={`flex-row items-center p-4 border-b border-slate-100 ${isSelected ? 'bg-purple-50' : 'bg-white'
                                             }`}
                                     >

@@ -1,6 +1,7 @@
 export interface Invoice {
     id: string;
     id_cliente: string;
+    id_contrato?: string; // ID do contrato associado
     descricao: string;
     valor: string; // IXC often returns values as strings, e.g., "100.00"
     data_vencimento: string;
@@ -14,28 +15,38 @@ export interface Invoice {
 }
 
 export interface Contract {
-    id: string;
+    id: string; // Mapear de id_vd_contrato
     id_cliente: string;
-    contrato: string;
+    contrato: string; // Número do contrato
     status: string;
     status_internet: string;
-    data_cadastro: string;
+    data_cadastro: string; // Mapear de data
     data_ativacao: string;
     data_cancelamento: string;
-    download: string;
-    upload: string;
-    valor: string;
-    forma_pagamento: string;
-    id_plano: string;
-    plano?: string;
-    endereco?: string;
-    numero?: string;
-    bairro?: string;
-    cidade?: string;
+
+    // Campos do plano
+    id_plano?: string;
+    plano_nome?: string; // Mapear de descricao_aux_plano_venda
+    descricao_aux_plano_venda?: string;
+
+    // Endereço (vem do cliente)
+    endereco: string;
+    numero: string;
+    bairro: string;
+    cidade: string;
     estado?: string;
-    plano_nome?: string;
+    complemento?: string;
+    cep?: string;
+
+    // Pagamento
+    forma_pagamento?: string;
+    tipo_cobranca?: string;
+    valor?: string;
     valor_contrato?: string;
-    contrato_pdf?: string; // URL do contrato em PDF
+
+    // Extras
+    renovacao_automatica?: string;
+    contrato_pdf?: string;
 }
 
 export interface RadUsuario {

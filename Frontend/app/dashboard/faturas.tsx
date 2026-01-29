@@ -22,9 +22,10 @@ import { WebView } from 'react-native-webview';
 import { SkeletonInvoiceHeader } from '../../src/components/Skeleton';
 import { ErrorState } from '../../src/components/StateComponents';
 import { useAuth } from '../../src/context/AuthContext';
+import { useContract } from '../../src/context/ContractContext';
 import { useInvoiceHistory } from '../../src/hooks/useQueries';
 import { bffApi } from '../../src/services/api';
-import { Invoice } from '../../src/types/ixc';
+import { Contract, Invoice } from '../../src/types/ixc';
 import { formatCurrency, formatDateShort, getFirstName, getMonthName, getMonthYear } from '../../src/utils/formatters';
 import { showToast } from '../../src/utils/toast';
 
@@ -35,9 +36,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function FaturasScreen() {
     const router = useRouter();
     const { user } = useAuth();
+    const { contracts, selectedContract, selectedContractId, setSelectedContract } = useContract();
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [showPicker, setShowPicker] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('vencidas');
+    const [showContractPicker, setShowContractPicker] = useState(false);
 
     // Obter primeiro nome para saudação
     const firstName = getFirstName(user?.razao);
@@ -63,20 +66,32 @@ export default function FaturasScreen() {
         return currentMonthInvoice ? [currentMonthInvoice] : [invoices[0]];
     };
 
-    // Obter faturas para a aba atual
+    // Obter faturas para a aba atual filtradas por contrato
     const getInvoicesForTab = (): Invoice[] => {
         if (!invoiceData) return [];
+
+        let invoices: Invoice[] = [];
         switch (activeTab) {
             case 'abertas':
                 // Mostrar apenas fatura do mês atual (1 fatura)
-                return getCurrentMonthInvoice(invoiceData.abertas || []);
+                invoices = getCurrentMonthInvoice(invoiceData.abertas || []);
+                break;
             case 'vencidas':
-                return invoiceData.vencidas || [];
+                invoices = invoiceData.vencidas || [];
+                break;
             case 'pagas':
-                return invoiceData.pagas || [];
+                invoices = invoiceData.pagas || [];
+                break;
             default:
-                return [];
+                invoices = [];
         }
+
+        // Filtrar por contrato selecionado se houver
+        if (selectedContractId && invoices.length > 0) {
+            return invoices.filter(inv => inv.id_contrato === selectedContractId);
+        }
+
+        return invoices;
     };
 
     const currentInvoices = getInvoicesForTab();
@@ -88,7 +103,7 @@ export default function FaturasScreen() {
         } else {
             setSelectedInvoice(null);
         }
-    }, [invoiceData, activeTab]);
+    }, [invoiceData, activeTab, selectedContractId]);
 
     // Auto-redirecionar para aba Vencidas se houver faturas vencidas ao ganhar foco
     useFocusEffect(
@@ -99,15 +114,24 @@ export default function FaturasScreen() {
         }, [invoiceData])
     );
 
-    // Badges de contador das abas
+    // Badges de contador das abas (filtradas por contrato)
     const getTabCount = (tab: TabType): number => {
         if (!invoiceData) return 0;
+
+        let invoices: Invoice[] = [];
         if (tab === 'abertas') {
             // Mostrar 1 para fatura do mês atual se existir
-            const abertas = invoiceData.abertas || [];
-            return abertas.length > 0 ? 1 : 0;
+            invoices = getCurrentMonthInvoice(invoiceData.abertas || []);
+        } else {
+            invoices = invoiceData[tab] || [];
         }
-        return invoiceData[tab]?.length || 0;
+
+        // Filtrar por contrato selecionado se houver
+        if (selectedContractId && invoices.length > 0) {
+            invoices = invoices.filter(inv => inv.id_contrato === selectedContractId);
+        }
+
+        return invoices.length;
     };
 
     // Tratar estado de erro
@@ -256,16 +280,17 @@ export default function FaturasScreen() {
         const isActive = activeTab === tab;
         const count = getTabCount(tab);
 
-        let bgColor = 'bg-white/20';
-        let textColor = 'text-white/70';
-        let badgeColor = 'bg-white/30';
+        // Estilos baseados no estado ativo/inativo
+        let containerStyle = isActive ? 'bg-white shadow-sm' : 'bg-transparent';
+        let textStyle = isActive
+            ? (tab === 'vencidas' ? 'text-red-600' : tab === 'pagas' ? 'text-green-600' : 'text-purple-700')
+            : 'text-white/80';
 
-        if (isActive) {
-            bgColor = 'bg-white';
-            // Cor do texto conforme a aba
-            textColor = tab === 'vencidas' ? 'text-red-600' : tab === 'pagas' ? 'text-green-600' : 'text-purple-700';
-            badgeColor = tab === 'vencidas' ? 'bg-red-500' : tab === 'pagas' ? 'bg-green-500' : 'bg-purple-500';
-        }
+        let badgeContainerStyle = isActive
+            ? (tab === 'vencidas' ? 'bg-red-500' : tab === 'pagas' ? 'bg-green-500' : 'bg-purple-500')
+            : 'bg-white/20';
+
+        let badgeTextStyle = isActive ? 'text-white' : 'text-white';
 
         // Não mostrar badge de quantidade para aba Pagas
         const showBadge = tab !== 'pagas' && count > 0;
@@ -273,12 +298,12 @@ export default function FaturasScreen() {
         return (
             <TouchableOpacity
                 onPress={() => setActiveTab(tab)}
-                className={`flex-1 py-2.5 px-3 rounded-xl flex-row items-center justify-center ${bgColor}`}
+                className={`flex-1 py-3 rounded-full flex-row items-center justify-center ${containerStyle}`}
             >
-                <Text className={`font-semibold text-sm ${textColor}`}>{label}</Text>
+                <Text className={`font-bold text-sm ${textStyle}`}>{label}</Text>
                 {showBadge && (
-                    <View className={`ml-1.5 px-2 py-0.5 rounded-full ${isActive ? badgeColor : 'bg-white/30'}`}>
-                        <Text className={`text-xs font-bold ${isActive ? 'text-white' : 'text-white/80'}`}>
+                    <View className={`ml-1.5 w-5 h-5 rounded-full items-center justify-center ${badgeContainerStyle}`}>
+                        <Text className={`text-[10px] font-bold ${badgeTextStyle}`}>
                             {count}
                         </Text>
                     </View>
@@ -314,14 +339,9 @@ export default function FaturasScreen() {
                                 tintColor="white"
                             />
                         </View>
-                        <View className="flex-row space-x-4">
-                            <TouchableOpacity>
-                                <Ionicons name="notifications-outline" size={24} color="white" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => router.push('/dashboard/perfil')}>
-                                <Ionicons name="settings-outline" size={24} color="white" />
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity onPress={() => router.push('/dashboard/perfil')}>
+                            <Ionicons name="settings-outline" size={24} color="white" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Saudação */}
@@ -329,8 +349,25 @@ export default function FaturasScreen() {
                         <Text className="text-white text-lg font-medium">Olá, {firstName}</Text>
                     </View>
 
+                    {/* Seletor de Contrato */}
+                    {contracts.length > 1 && (
+                        <TouchableOpacity
+                            onPress={() => setShowContractPicker(true)}
+                            className="bg-white/10 rounded-xl px-4 py-3 mb-4 flex-row items-center justify-between"
+                        >
+                            <View className="flex-row items-center flex-1 mr-2">
+                                <Ionicons name="document-text-outline" size={20} color="white" />
+                                <Text className="text-white font-semibold ml-2" numberOfLines={1}>
+                                    {contracts.find(c => c.id === selectedContractId)?.descricao_aux_plano_venda ||
+                                        `${contracts.find(c => c.id === selectedContractId)?.contrato || selectedContractId}`}
+                                </Text>
+                            </View>
+                            <Ionicons name="chevron-down" size={20} color="white" />
+                        </TouchableOpacity>
+                    )}
+
                     {/* Abas */}
-                    <View className="flex-row bg-white/10 rounded-xl p-1 mb-4">
+                    <View className="flex-row bg-black/10 rounded-full p-1 mb-4">
                         <TabButton tab="vencidas" label="Vencidas" />
                         <TabButton tab="abertas" label="Abertas" />
                         <TabButton tab="pagas" label="Pagas" />
@@ -408,7 +445,7 @@ export default function FaturasScreen() {
             {/* Conteúdo - Diferente para aba Pagas (Histórico) */}
             {isPaid ? (
                 /* Layout de Histórico para Faturas Pagas */
-                <View className="flex-1 -mt-72 px-6 pb-6">
+                <View className="flex-1 -mt-56 px-6 pb-6">
                     <View className="bg-white rounded-2xl shadow-sm border border-slate-100 flex-1">
                         {/* Cabeçalho do Histórico */}
                         <View className="px-5 py-4 border-b border-slate-100">
@@ -488,18 +525,18 @@ export default function FaturasScreen() {
                     </View>
                 </View>
             ) : (
-                <View className="flex-1 -mt-12 px-6 pb-6">
+                <View className="flex-1 mt-8 px-6 pb-6">
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                         {/* Mostrar botões de ação apenas para faturas não pagas */}
                         {!isPaid && selectedInvoice && (
                             <>
                                 {/* Botão Copiar Código de Barras */}
                                 <TouchableOpacity
-                                    className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
                                     onPress={handleCopyBarcode}
                                     disabled={!selectedInvoice}
                                 >
-                                    <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                    <View className="w-10 h-10 bg-slate-100 rounded-xl items-center justify-center mr-4">
                                         <Ionicons name="barcode-outline" size={24} color="#64748b" />
                                     </View>
                                     <Text className="text-slate-700 font-bold text-lg flex-1">Copiar Código de Barras</Text>
@@ -507,11 +544,11 @@ export default function FaturasScreen() {
 
                                 {/* Botão Segunda Via */}
                                 <TouchableOpacity
-                                    className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
                                     onPress={handleBoletoAction}
                                     disabled={!selectedInvoice || loadingBoleto}
                                 >
-                                    <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                    <View className="w-10 h-10 bg-slate-100 rounded-xl items-center justify-center mr-4">
                                         {loadingBoleto ? (
                                             <ActivityIndicator size="small" color="#64748b" />
                                         ) : (
@@ -525,11 +562,11 @@ export default function FaturasScreen() {
 
                                 {/* Botão PIX */}
                                 <TouchableOpacity
-                                    className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
                                     onPress={handlePix}
                                     disabled={!selectedInvoice || loadingPix}
                                 >
-                                    <View className="w-12 h-12 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                    <View className="w-10 h-10 bg-slate-100 rounded-xl items-center justify-center mr-4">
                                         {loadingPix ? (
                                             <ActivityIndicator size="small" color="#64748b" />
                                         ) : (
@@ -546,7 +583,7 @@ export default function FaturasScreen() {
                         {/* Para faturas pagas, mostrar opção de baixar comprovante */}
                         {isPaid && selectedInvoice && (
                             <TouchableOpacity
-                                className="bg-white rounded-2xl p-6 shadow-sm mb-4 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
                                 onPress={handleBoletoAction}
                                 disabled={!selectedInvoice || loadingBoleto}
                             >
@@ -673,6 +710,72 @@ export default function FaturasScreen() {
                             )}
                         </View>
                     </SafeAreaView>
+                </View>
+            </Modal>
+
+            {/* Modal Seletor de Contrato */}
+            <Modal
+                visible={showContractPicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowContractPicker(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-end">
+                    <View className="bg-white rounded-t-3xl">
+                        <View className="p-5 border-b border-slate-100">
+                            <View className="flex-row justify-between items-center">
+                                <Text className="text-xl font-bold text-slate-800">Selecione o Contrato</Text>
+                                <TouchableOpacity onPress={() => setShowContractPicker(false)}>
+                                    <Ionicons name="close" size={24} color="#64748b" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                        <ScrollView className="max-h-80">
+                            {contracts.map((contract) => {
+                                const isSelected = contract.id === selectedContractId;
+                                return (
+                                    <TouchableOpacity
+                                        key={contract.id}
+                                        onPress={() => {
+                                            setSelectedContract(contract);
+                                            setShowContractPicker(false);
+                                        }}
+                                        className={`flex-row items-center p-4 border-b border-slate-100 ${isSelected ? 'bg-purple-50' : 'bg-white'
+                                            }`}
+                                    >
+                                        <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${isSelected ? 'bg-purple-600' : 'bg-slate-100'
+                                            }`}>
+                                            <Ionicons
+                                                name="document-text"
+                                                size={20}
+                                                color={isSelected ? 'white' : '#64748b'}
+                                            />
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'
+                                                }`}>
+                                                {contract.contrato || contract.id}
+                                            </Text>
+                                            <Text className="text-slate-500 text-sm">
+                                                {contract.endereco || 'Internet'}
+                                            </Text>
+                                        </View>
+                                        {isSelected && (
+                                            <Ionicons name="checkmark-circle" size={24} color="#7c3aed" />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                        <View className="p-5">
+                            <TouchableOpacity
+                                onPress={() => setShowContractPicker(false)}
+                                className="bg-slate-100 rounded-xl py-4 items-center"
+                            >
+                                <Text className="text-slate-600 font-semibold">Cancelar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 </View>
             </Modal>
         </View >

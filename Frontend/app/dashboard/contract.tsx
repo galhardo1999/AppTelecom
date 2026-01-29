@@ -179,7 +179,7 @@ export default function ContractScreen() {
                                             </View>
                                             <View>
                                                 <Text className="text-slate-800 text-lg font-bold">
-                                                    Contrato #{contract.contrato || contract.id}
+                                                    {contract.contrato || contract.id}
                                                 </Text>
                                                 <View className="flex-row items-center mt-1">
                                                     <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
@@ -187,16 +187,7 @@ export default function ContractScreen() {
                                                 </View>
                                             </View>
                                         </View>
-                                        <View className="items-end">
-                                            <Text className="text-slate-500 text-xs">Valor Mensal</Text>
-                                            <Text className="text-purple-600 text-xl font-bold">
-                                                {formatCurrency(
-                                                    (parseFloat(contract.valor_contrato || '0') > 0
-                                                        ? contract.valor_contrato
-                                                        : contract.valor) ?? '0'
-                                                )}
-                                            </Text>
-                                        </View>
+
                                     </View>
                                 </View>
 
