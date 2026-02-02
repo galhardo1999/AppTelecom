@@ -14,7 +14,8 @@
                 "gradleCommand": ":app:assembleRelease"
             },
             "env": {
-                "EXPO_NO_CAPABILITY_SYNC": "1"
+                "EXPO_NO_CAPABILITY_SYNC": "1",
+                "EXPO_PUBLIC_BFF_URL": "https://bff-tau-two.vercel.app"
             },
             "ios": {
                 "simulator": true

@@ -2,11 +2,15 @@ import axios from 'axios';
 import { Buffer } from 'buffer';
 import CryptoJS from 'crypto-js';
 
-const IXC_HOST = process.env.IXC_HOST!;
-const IXC_TOKEN = process.env.IXC_TOKEN!;
+const IXC_HOST = process.env.IXC_HOST || '';
+const IXC_TOKEN = process.env.IXC_TOKEN || '';
 
-// Criar cabeçalho de Basic Auth (mesma lógica do app original)
-const authHeader = `Basic ${Buffer.from(IXC_TOKEN).toString('base64')}`;
+if (!IXC_HOST || !IXC_TOKEN) {
+    console.error("CRITICAL ERROR: IXC_HOST or IXC_TOKEN environment variables are missing!");
+}
+
+// Criar cabeçalho de Basic Auth apenas se o token existir
+const authHeader = IXC_TOKEN ? `Basic ${Buffer.from(IXC_TOKEN).toString('base64')}` : '';
 
 const ixcClient = axios.create({
     baseURL: IXC_HOST,

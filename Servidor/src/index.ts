@@ -4,6 +4,8 @@ import { logger } from 'hono/logger';
 import { authMiddleware, generateToken, JWTPayload } from './middleware/auth.js';
 import { apiRateLimiter, loginRateLimiter } from './middleware/rateLimiter.js';
 import { ixcService } from './services/ixc.js';
+import { serveStatic } from 'hono/bun';
+import { logoBase64 } from './logoBase64.js';
 
 // Tipagem das variáveis do contexto
 type Variables = {
@@ -13,6 +15,9 @@ type Variables = {
 const app = new Hono<{ Variables: Variables }>();
 
 // Middleware
+app.use('/app-mockup.png', serveStatic({ path: './public/app-mockup.png' }));
+app.use('/image.png', serveStatic({ path: './public/image.png' }));
+app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', logger());
 app.use('*', cors({
     origin: '*', // Em produção, restringir ao domínio do seu app
@@ -20,13 +25,83 @@ app.use('*', cors({
     allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Verificação de saúde
+// Landing Page HTML
+const landingPageHTML = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apollo Telecom - App Oficial</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --secondary: #5b21b6;
+            --dark: #0f172a;
+            --light: #ffffff;
+            --bg: #faf5ff; /* purple-50 */
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background: var(--bg); color: var(--dark); display: flex; flex-direction: column; min-height: 100vh; }
+        header { padding: 2rem; text-align: center; }
+        .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; gap: 2rem; }
+        h1 { 
+            font-size: 3rem; 
+            background: linear-gradient(to right, #7c3aed, #4c1d95); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            font-weight: 800;
+        }
+        p { color: #64748b; font-size: 1.2rem; max-width: 600px; line-height: 1.6; }
+        .mockup-container { position: relative; width: 280px; margin: 2rem 0; animation: float 6s ease-in-out infinite; }
+        .mockup-container img { width: 100%; border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(124, 58, 237, 0.25); border: 4px solid #fff; }
+        .btn-group { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+        .btn { padding: 1rem 2rem; border-radius: 99px; text-decoration: none; font-weight: bold; transition: transform 0.2s; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.3); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { transform: scale(1.05); background: var(--secondary); }
+        .footer { padding: 2rem; text-align: center; color: #475569; font-size: 0.9rem; width: 100%; display: flex; justify-content: center; align-items: center; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+    <header>
+        <img src="${logoBase64}" alt="Apollo Telecom" style="height: 60px; max-width: 100%; object-fit: contain;">
+    </header>
+    <main class="hero">
+        <div class="content">
+            <h1>Sua conexão na palma da mão</h1>
+            <p>Gerencie seu plano, acesse faturas e acompanhe seu consumo de internet com o novo aplicativo Apollo Telecom. Disponível para Android e iOS.</p>
+        </div>
+        
+        <div class="mockup-container">
+            <!-- Image served from public folder or Vercel static -->
+            <img src="/app-mockup.png" alt="Apollo Telecom App">
+        </div>
+
+        <div class="btn-group">
+            <a href="https://play.google.com/store/apps/details?id=com.galhardyn.apollotelecom" class="btn btn-primary" target="_blank">
+                <i class="fa-brands fa-google-play"></i> Google Play
+            </a>
+            <a href="#" class="btn btn-primary">
+                <i class="fa-brands fa-apple"></i> App Store
+            </a>
+        </div>
+    </main>
+    <footer class="footer">
+        <p>&copy; 2026 Apollo Telecom. Todos os direitos reservados.</p>
+    </footer>
+</body>
+</html>
+`;
+
+// Verificação de saúde (Landing Page)
 app.get('/', (c) => {
-    return c.json({
-        status: 'ok',
-        service: 'Apollo Telecom BFF',
-        version: '1.0.0'
-    });
+    return c.html(landingPageHTML);
 });
 
 // ==========================================
