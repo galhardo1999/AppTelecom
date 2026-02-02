@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { handle } from 'hono/vercel';
-import { authMiddleware, generateToken, JWTPayload } from '../src/middleware/auth';
-import { apiRateLimiter, loginRateLimiter } from '../src/middleware/rateLimiter';
-import { ixcService } from '../src/services/ixc';
+import { authMiddleware, generateToken, JWTPayload } from '../src/middleware/auth.js';
+import { apiRateLimiter, loginRateLimiter } from '../src/middleware/rateLimiter.js';
+import { ixcService } from '../src/services/ixc.js';
 
 // Tipagem das variáveis do contexto
 type Variables = {
