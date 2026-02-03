@@ -39,12 +39,16 @@ const extractPixCode = (data: any): string | null => {
     // Handle IXC's actual response format: { pix: { dadosPix: "...", qrCode: { qrcode: "..." } } }
     if (data.pix) {
         const pixData = data.pix;
-        if (pixData.dadosPix && pixData.dadosPix.trim() !== '') {
-            return pixData.dadosPix;
-        }
-        if (pixData.qrCode?.qrcode && pixData.qrCode.qrcode.trim() !== '') {
+
+        // Prioritize QRCode as it appeared correct in tests
+        if (pixData.qrCode?.qrcode && typeof pixData.qrCode.qrcode === 'string' && pixData.qrCode.qrcode.trim() !== '') {
             return pixData.qrCode.qrcode;
         }
+
+        if (pixData.dadosPix && typeof pixData.dadosPix === 'string' && pixData.dadosPix.trim() !== '') {
+            return pixData.dadosPix;
+        }
+
         if (typeof pixData === 'string' && pixData.trim() !== '') {
             return pixData;
         }
