@@ -26,7 +26,7 @@ import { useContract } from '../../src/context/ContractContext';
 import { useInvoiceHistory } from '../../src/hooks/useQueries';
 import { bffApi } from '../../src/services/api';
 import { Contract, Invoice } from '../../src/types/ixc';
-import { formatCurrency, formatDateShort, getFirstName, getMonthName, getMonthYear } from '../../src/utils/formatters';
+import { formatCurrency, formatDateShort, formatFullName, getMonthName, getMonthYear } from '../../src/utils/formatters';
 import { showToast } from '../../src/utils/toast';
 
 type TabType = 'vencidas' | 'abertas' | 'pagas';
@@ -42,8 +42,8 @@ export default function FaturasScreen() {
     const [activeTab, setActiveTab] = useState<TabType>('vencidas');
     const [showContractPicker, setShowContractPicker] = useState(false);
 
-    // Obter primeiro nome para saudação
-    const firstName = getFirstName(user?.razao);
+    // Obter nome completo para saudação
+    const fullName = formatFullName(user?.razao);
 
     // Usar query de histórico de faturas
     const { data: invoiceData, isLoading: loading, isError, refetch } = useInvoiceHistory();
@@ -346,7 +346,7 @@ export default function FaturasScreen() {
 
                     {/* Saudação */}
                     <View className="mt-4 mb-3">
-                        <Text className="text-white text-lg font-medium">Olá, {firstName}</Text>
+                        <Text className="text-white text-lg font-medium">Olá, {fullName}</Text>
                     </View>
 
                     {/* Seletor de Contrato */}
@@ -530,6 +530,24 @@ export default function FaturasScreen() {
                         {/* Mostrar botões de ação apenas para faturas não pagas */}
                         {!isPaid && selectedInvoice && (
                             <>
+                                {/* Botão PIX */}
+                                <TouchableOpacity
+                                    className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
+                                    onPress={handlePix}
+                                    disabled={!selectedInvoice || loadingPix}
+                                >
+                                    <View className="w-10 h-10 bg-slate-100 rounded-xl items-center justify-center mr-4">
+                                        {loadingPix ? (
+                                            <ActivityIndicator size="small" color="#64748b" />
+                                        ) : (
+                                            <Ionicons name="qr-code-outline" size={24} color="#64748b" />
+                                        )}
+                                    </View>
+                                    <Text className="text-slate-700 font-bold text-lg flex-1">
+                                        {loadingPix ? 'Buscando PIX...' : 'Copiar Código PIX'}
+                                    </Text>
+                                </TouchableOpacity>
+
                                 {/* Botão Copiar Código de Barras */}
                                 <TouchableOpacity
                                     className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
@@ -560,23 +578,7 @@ export default function FaturasScreen() {
                                     </Text>
                                 </TouchableOpacity>
 
-                                {/* Botão PIX */}
-                                <TouchableOpacity
-                                    className="bg-white rounded-xl p-4 shadow-sm mb-3 flex-row items-center active:bg-slate-50 border border-slate-100"
-                                    onPress={handlePix}
-                                    disabled={!selectedInvoice || loadingPix}
-                                >
-                                    <View className="w-10 h-10 bg-slate-100 rounded-xl items-center justify-center mr-4">
-                                        {loadingPix ? (
-                                            <ActivityIndicator size="small" color="#64748b" />
-                                        ) : (
-                                            <Ionicons name="qr-code-outline" size={24} color="#64748b" />
-                                        )}
-                                    </View>
-                                    <Text className="text-slate-700 font-bold text-lg flex-1">
-                                        {loadingPix ? 'Buscando PIX...' : 'Copiar Código PIX'}
-                                    </Text>
-                                </TouchableOpacity>
+
                             </>
                         )}
 

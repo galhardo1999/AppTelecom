@@ -82,3 +82,29 @@ export const getFirstName = (fullName: string | undefined | null): string => {
     const firstName = cleanName.split(' ')[0];
     return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
 };
+
+/**
+ * Format full name (Title Case with connective handling)
+ */
+export const formatFullName = (fullName: string | undefined | null): string => {
+    if (!fullName) return 'Cliente';
+
+    // Remove numbers and special chars from the start
+    const cleanName = fullName.replace(/^[\d\.\-\/\s]+/, '').trim();
+
+    if (!cleanName) return 'Cliente';
+
+    // Lowercase connectives
+    const connectives = ['da', 'de', 'do', 'das', 'dos', 'e'];
+
+    return cleanName
+        .toLowerCase()
+        .split(' ')
+        .map((word, index) => {
+            if (index > 0 && connectives.includes(word)) {
+                return word;
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+};

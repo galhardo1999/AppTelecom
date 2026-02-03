@@ -10,13 +10,13 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useContract } from '../../src/context/ContractContext';
 import { useInvoiceHistory } from '../../src/hooks/useQueries';
 import { Contract } from '../../src/types/ixc';
-import { formatCurrency, formatDateShort, getFirstName } from '../../src/utils/formatters';
+import { formatCurrency, formatDateShort, formatFullName } from '../../src/utils/formatters';
 
 export default function HomeScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const { contracts, selectedContract, setSelectedContract } = useContract();
-    const firstName = getFirstName(user?.razao);
+    const fullName = formatFullName(user?.razao);
     const [showPromo, setShowPromo] = useState(false);
     const [showContractPicker, setShowContractPicker] = useState(false);
 
@@ -82,7 +82,7 @@ export default function HomeScreen() {
                     {/* Saudação */}
                     <View className="mt-4">
                         <Text className="text-white/80 text-base">Olá,</Text>
-                        <Text className="text-white text-2xl font-bold">{firstName}</Text>
+                        <Text className="text-white text-2xl font-bold">{fullName}</Text>
                     </View>
                 </SafeAreaView>
             </View>

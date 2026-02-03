@@ -5,7 +5,7 @@ import React from 'react';
 import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
-import { getFirstName } from '../../src/utils/formatters';
+import { formatFullName } from '../../src/utils/formatters';
 
 interface MenuItem {
     title: string;
@@ -20,7 +20,7 @@ interface MenuItem {
 export default function PerfilScreen() {
     const router = useRouter();
     const { user, signOut } = useAuth();
-    const firstName = getFirstName(user?.razao);
+    const fullName = formatFullName(user?.razao);
 
     const handleLogout = () => {
         Alert.alert(
@@ -114,7 +114,7 @@ export default function PerfilScreen() {
                     {/* Info do Usuário */}
                     <View className="mt-4">
                         <Text className="text-white/80 text-sm">Bem-vindo(a),</Text>
-                        <Text className="text-white text-2xl font-bold mt-1">{firstName}</Text>
+                        <Text className="text-white text-2xl font-bold mt-1">{fullName}</Text>
                     </View>
                 </SafeAreaView>
             </View>
@@ -130,7 +130,7 @@ export default function PerfilScreen() {
                     <View className="flex-row items-center">
                         <View className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full items-center justify-center">
                             <Text className="text-white text-xl font-bold">
-                                {firstName?.charAt(0).toUpperCase()}
+                                {fullName?.charAt(0).toUpperCase()}
                             </Text>
                         </View>
                         <View className="ml-4 flex-1">
