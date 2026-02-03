@@ -7,6 +7,8 @@ import {
     Alert,
     Image,
     KeyboardAvoidingView,
+    Linking,
+    Modal,
     Platform,
     ScrollView,
     Text,
@@ -34,6 +36,7 @@ export default function LoginScreen() {
 
     // Custom Alert State
     const [alertVisible, setAlertVisible] = useState(false);
+    const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
     const [alertConfig, setAlertConfig] = useState({
         title: '',
         message: '',
@@ -148,6 +151,16 @@ export default function LoginScreen() {
             );
         }
         setShowBiometricPrompt(false);
+    };
+
+    const handlePhoneSupport = () => {
+        Linking.openURL('tel:08008710606');
+    };
+
+    const handleWhatsappSupport = () => {
+        // Formato internacional para WhatsApp: 55 + DDD + Numero
+        const message = "Olá! Esqueci meus dados de acesso ao aplicativo e gostaria de ajuda para recuperar.";
+        Linking.openURL(`https://wa.me/5508008710606?text=${encodeURIComponent(message)}`);
     };
 
     const biometryLabel = getBiometryLabel(biometryType);
@@ -274,16 +287,22 @@ export default function LoginScreen() {
                                 </View>
                             </View>
 
-                            {/* Checkbox Lembrar Email */}
-                            <TouchableOpacity
-                                className="flex-row items-center ml-1 mt-4"
-                                onPress={() => setRememberEmail(!rememberEmail)}
-                            >
-                                <View className={`w-5 h-5 rounded border items-center justify-center mr-2 ${rememberEmail ? 'bg-purple-600 border-purple-600' : 'bg-white border-slate-300'}`}>
-                                    {rememberEmail && <Ionicons name="checkmark" size={14} color="white" />}
-                                </View>
-                                <Text className="text-slate-600 text-sm font-medium">Lembrar email</Text>
-                            </TouchableOpacity>
+                            {/* Opções de Login */}
+                            <View className="flex-row justify-between items-center mt-4">
+                                <TouchableOpacity
+                                    className="flex-row items-center ml-1"
+                                    onPress={() => setRememberEmail(!rememberEmail)}
+                                >
+                                    <View className={`w-5 h-5 rounded border items-center justify-center mr-2 ${rememberEmail ? 'bg-purple-600 border-purple-600' : 'bg-white border-slate-300'}`}>
+                                        {rememberEmail && <Ionicons name="checkmark" size={14} color="white" />}
+                                    </View>
+                                    <Text className="text-slate-600 text-sm font-medium">Lembrar email</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity onPress={() => setShowForgotPasswordModal(true)}>
+                                    <Text className="text-purple-600 text-sm font-semibold">Esqueceu o email/senha?</Text>
+                                </TouchableOpacity>
+                            </View>
 
                             {/* Botão de Enviar */}
                             <TouchableOpacity
@@ -328,13 +347,101 @@ export default function LoginScreen() {
                         {/* Rodapé */}
                         <View className="mt-12 items-center">
                             <Text className="text-slate-400 text-xs text-center">
-                                © 2025 Apollo Telecom. Todos os direitos reservados.
+                                © 2026 Apollo Telecom. Todos os direitos reservados.
                             </Text>
                         </View>
                     </Animated.View>
 
                 </ScrollView>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+
+            {/* Modal de Recuperação de Senha */}
+            <Modal
+                visible={showForgotPasswordModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowForgotPasswordModal(false)}
+            >
+                <View className="flex-1 bg-black/50 justify-center items-center px-6">
+                    <View className="bg-white w-full rounded-2xl p-6 shadow-xl">
+                        <View className="items-center mb-4">
+                            <View className="w-16 h-16 bg-purple-100 rounded-full items-center justify-center mb-4">
+                                <Ionicons name="key-outline" size={32} color="#7c3aed" />
+                            </View>
+                            <Text className="text-xl font-bold text-slate-800 text-center">
+                                Recuperação de Email/Senha
+                            </Text>
+                        </View>
+
+                        <Text className="text-slate-600 text-center leading-6 mb-6">
+                            Para garantir a segurança dos seus dados, a redefinição de senha deve ser feita através da nossa central de atendimento.
+                        </Text>
+
+                        <View className="bg-slate-50 rounded-xl p-4 mb-6">
+                            <View className="flex-row items-start mb-3">
+                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
+                                    <Text className="text-white font-bold text-xs">1</Text>
+                                </View>
+                                <Text className="flex-1 text-slate-700 text-sm">
+                                    Entre em contato com nossa equipe de suporte.
+                                </Text>
+                            </View>
+                            <View className="flex-row items-start mb-3">
+                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
+                                    <Text className="text-white font-bold text-xs">2</Text>
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-slate-700 text-sm">Telefone: 0800 871 0606</Text>
+                                    <Text className="text-slate-700 text-sm">WhatsApp: 0800 871 0606</Text>
+                                </View>
+                            </View>
+                            <View className="flex-row items-start mb-3">
+                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
+                                    <Text className="text-white font-bold text-xs">3</Text>
+                                </View>
+                                <Text className="flex-1 text-slate-700 text-sm">
+                                    Confirme seus dados cadastrais (CPF/CNPJ).
+                                </Text>
+                            </View>
+                            <View className="flex-row items-start">
+                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
+                                    <Text className="text-white font-bold text-xs">4</Text>
+                                </View>
+                                <Text className="flex-1 text-slate-700 text-sm">
+                                    Os dados de acesso será confirmado pelo atendente.
+                                </Text>
+                            </View>
+                        </View>
+
+
+
+                        <TouchableOpacity
+                            className="bg-blue-500 rounded-xl py-3.5 mb-3 flex-row justify-center items-center"
+                            onPress={handlePhoneSupport}
+                        >
+                            <Ionicons name="call-outline" size={20} color="white" style={{ marginRight: 8 }} />
+                            <Text className="text-white font-bold text-center">Ligar Agora</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            className="bg-green-500 rounded-xl py-3.5 mb-3 flex-row justify-center items-center"
+                            onPress={handleWhatsappSupport}
+                        >
+                            <Ionicons name="logo-whatsapp" size={20} color="white" style={{ marginRight: 8 }} />
+                            <Text className="text-white font-bold text-center">Chamar no WhatsApp</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            className="bg-slate-200 rounded-xl py-3.5"
+                            onPress={() => setShowForgotPasswordModal(false)}
+                        >
+                            <Text className="text-slate-700 font-bold text-center">Entendi</Text>
+                        </TouchableOpacity>
+
+
+                    </View>
+                </View>
+            </Modal>
+        </SafeAreaView >
     );
 }
