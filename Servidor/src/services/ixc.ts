@@ -30,6 +30,48 @@ export interface IXCClient {
     [key: string]: any;
 }
 
+/**
+ * Função auxiliar para extrair código PIX de diferentes formatos de resposta da API IXC
+ */
+const extractPixCode = (data: any): string | null => {
+    if (!data) return null;
+
+    // Handle IXC's actual response format: { pix: { dadosPix: "...", qrCode: { qrcode: "..." } } }
+    if (data.pix) {
+        const pixData = data.pix;
+        if (pixData.dadosPix && pixData.dadosPix.trim() !== '') {
+            return pixData.dadosPix;
+        }
+        if (pixData.qrCode?.qrcode && pixData.qrCode.qrcode.trim() !== '') {
+            return pixData.qrCode.qrcode;
+        }
+        if (typeof pixData === 'string' && pixData.trim() !== '') {
+            return pixData;
+        }
+    }
+
+    // Direct string response
+    if (typeof data === 'string' && data.trim() !== '' && data.length > 20) {
+        return data;
+    }
+
+    // Legacy and common field names
+    if (data.pix_copia_cola && data.pix_copia_cola.trim() !== '') return data.pix_copia_cola;
+    if (data.qrcode && data.qrcode.trim() !== '') return data.qrcode;
+    if (data.codigo && data.codigo.trim() !== '') return data.codigo;
+    if (data.dadosPix && data.dadosPix.trim() !== '') return data.dadosPix;
+    if (data.qrcode_pix && data.qrcode_pix.trim() !== '') return data.qrcode_pix;
+    if (data.emv && data.emv.trim() !== '') return data.emv;
+
+    // Array response format
+    if (data.registros && Array.isArray(data.registros) && data.registros.length > 0) {
+        const reg = data.registros[0];
+        return reg.pix_copia_cola || reg.qrcode || reg.codigo || reg.dadosPix || null;
+    }
+
+    return null;
+};
+
 export const ixcService = {
     /**
      * Find client by hotsite_email
@@ -351,46 +393,64 @@ export const ixcService = {
 
     /**
      * Get PIX code for invoice
-     * Tries multiple methods: get_pix endpoint, then direct invoice lookup
+     * Tries multiple methods to ensure compatibility with different IXC versions:
+     * 1. gerar_pix - Endpoint para gerar novo PIX
+     * 2. getpix_cob - Endpoint de cobrança PIX
+     * 3. get_pix - Endpoint padrão de algumas versões
+     * 4. fn_areceber - Busca direta na fatura pelo campo pix_copia_cola
      */
     getPixCode: async (invoiceId: string): Promise<string | null> => {
         console.log(`[PIX] Fetching PIX for invoice: ${invoiceId}`);
 
-        // Method 1: Try the get_pix endpoint (some IXC versions)
+        // Method 1: Try gerar_pix endpoint (IXC versions with PIX generation)
         try {
+            console.log('[PIX] Trying gerar_pix endpoint...');
+            const response = await ixcClient.post('/gerar_pix', {
+                id_areceber: invoiceId,
+                boletos: invoiceId
+            });
+
+            console.log('[PIX] gerar_pix response:', JSON.stringify(response.data));
+
+            const pixCode = extractPixCode(response.data);
+            if (pixCode) return pixCode;
+        } catch (error: any) {
+            console.log('[PIX] gerar_pix endpoint failed:', error.message);
+        }
+
+        // Method 2: Try getpix_cob endpoint (PIX billing endpoint)
+        try {
+            console.log('[PIX] Trying getpix_cob endpoint...');
+            const response = await ixcClient.post('/getpix_cob', {
+                id_areceber: invoiceId
+            });
+
+            console.log('[PIX] getpix_cob response:', JSON.stringify(response.data));
+
+            const pixCode = extractPixCode(response.data);
+            if (pixCode) return pixCode;
+        } catch (error: any) {
+            console.log('[PIX] getpix_cob endpoint failed:', error.message);
+        }
+
+        // Method 3: Try the get_pix endpoint (some IXC versions)
+        try {
+            console.log('[PIX] Trying get_pix endpoint...');
             const response = await ixcClient.post('/get_pix', {
                 id_areceber: invoiceId
             });
 
             console.log('[PIX] get_pix response:', JSON.stringify(response.data));
 
-            if (response.data) {
-                // Handle IXC's actual response format: { pix: { dadosPix: "...", qrCode: { qrcode: "..." } } }
-                if (response.data.pix) {
-                    const pixData = response.data.pix;
-                    if (pixData.dadosPix && pixData.dadosPix.trim() !== '') {
-                        return pixData.dadosPix;
-                    }
-                    if (pixData.qrCode?.qrcode && pixData.qrCode.qrcode.trim() !== '') {
-                        return pixData.qrCode.qrcode;
-                    }
-                }
-                // Legacy formats
-                if (typeof response.data === 'string' && response.data.trim() !== '') return response.data;
-                if (response.data.pix_copia_cola) return response.data.pix_copia_cola;
-                if (response.data.qrcode) return response.data.qrcode;
-                if (response.data.codigo) return response.data.codigo;
-                if (response.data.registros?.[0]) {
-                    const reg = response.data.registros[0];
-                    return reg.pix_copia_cola || reg.qrcode || reg.codigo || null;
-                }
-            }
+            const pixCode = extractPixCode(response.data);
+            if (pixCode) return pixCode;
         } catch (error: any) {
-            console.log('[PIX] get_pix endpoint failed, trying direct invoice lookup...');
+            console.log('[PIX] get_pix endpoint failed:', error.message);
         }
 
-        // Method 2: Try fetching the invoice directly to get pix_copia_cola
+        // Method 4: Try fetching the invoice directly to get pix_copia_cola field
         try {
+            console.log('[PIX] Trying direct invoice lookup...');
             const response = await ixcClient.post('/fn_areceber', {
                 qtype: 'fn_areceber.id',
                 query: invoiceId,
@@ -403,14 +463,41 @@ export const ixcService = {
 
             if (response.data?.registros?.[0]) {
                 const invoice = response.data.registros[0];
-                if (invoice.pix_copia_cola) {
+                // Verificar múltiplos campos possíveis
+                if (invoice.pix_copia_cola && invoice.pix_copia_cola.trim() !== '') {
                     return invoice.pix_copia_cola;
+                }
+                if (invoice.pix && invoice.pix.trim() !== '') {
+                    return invoice.pix;
+                }
+                if (invoice.qrcode_pix && invoice.qrcode_pix.trim() !== '') {
+                    return invoice.qrcode_pix;
                 }
             }
         } catch (error) {
             console.error('[PIX] Direct invoice lookup failed:', error);
         }
 
+        // Method 5: Try get_boleto with PIX option
+        try {
+            console.log('[PIX] Trying get_boleto with PIX option...');
+            const response = await ixcClient.post('/get_boleto', {
+                boletos: invoiceId,
+                juro: 'N',
+                multa: 'N',
+                atualiza_boleto: 'N',
+                tipo_boleto: 'pix'
+            });
+
+            console.log('[PIX] get_boleto PIX response:', JSON.stringify(response.data));
+
+            const pixCode = extractPixCode(response.data);
+            if (pixCode) return pixCode;
+        } catch (error: any) {
+            console.log('[PIX] get_boleto PIX endpoint failed:', error.message);
+        }
+
+        console.log('[PIX] All methods failed, returning null');
         return null;
     },
 
