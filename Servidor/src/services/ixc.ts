@@ -172,6 +172,12 @@ export const ixcService = {
                 dueDate.setHours(0, 0, 0, 0);
 
                 let classification = inv.status;
+
+                // Normalizar status de pagamento (R = Recebido, L = Liquidado -> P = Pago)
+                if (['R', 'L'].includes(inv.status)) {
+                    classification = 'P';
+                }
+
                 // Se status é 'A' (Aberto) mas passou da data de vencimento, marcar como vencido
                 if (inv.status === 'A' && dueDate < today) {
                     classification = 'V'; // Vencido
