@@ -15,7 +15,6 @@ type Variables = {
 const app = new Hono<{ Variables: Variables }>();
 
 // Middleware
-app.use('/app-mockup.png', serveStatic({ path: './public/app-mockup.png' }));
 app.use('/image.png', serveStatic({ path: './public/image.png' }));
 app.use('/public/*', serveStatic({ root: './' }));
 app.use('*', logger());
@@ -36,8 +35,8 @@ const landingPageHTML = `
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #7c3aed;
-            --secondary: #5b21b6;
+            --primary: #a82ee6;
+            --secondary: #8e1cbd;
             --dark: #0f172a;
             --light: #ffffff;
             --bg: #faf5ff; /* purple-50 */
@@ -48,19 +47,28 @@ const landingPageHTML = `
         .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; gap: 2rem; }
         h1 { 
             font-size: 3rem; 
-            background: linear-gradient(to right, #7c3aed, #4c1d95); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent; 
+            color: var(--dark);
             font-weight: 800;
         }
         p { color: #64748b; font-size: 1.2rem; max-width: 600px; line-height: 1.6; }
-        .mockup-container { position: relative; width: 280px; margin: 2rem 0; animation: float 6s ease-in-out infinite; }
-        .mockup-container img { width: 100%; border-radius: 40px; box-shadow: 0 25px 50px -12px rgba(124, 58, 237, 0.25); border: 4px solid #fff; }
         .btn-group { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
-        .btn { padding: 1rem 2rem; border-radius: 99px; text-decoration: none; font-weight: bold; transition: transform 0.2s; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.3); }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { transform: scale(1.05); background: var(--secondary); }
+        .btn { padding: 1rem 2rem; border-radius: 99px; text-decoration: none; font-weight: bold; transition: transform 0.2s; display: flex; align-items: center; gap: 0.5rem; color: white; border: none; }
+        .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+        .btn-google { background: #01875f; box-shadow: 0 4px 6px -1px rgba(1, 135, 95, 0.3); }
+        .btn-apple { background: #000000; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
         .footer { padding: 2rem; text-align: center; color: #475569; font-size: 0.9rem; width: 100%; display: flex; justify-content: center; align-items: center; }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .hero img { animation: fadeInUp 0.8s ease-out forwards; opacity: 0; }
+        h1 { animation: fadeInUp 0.8s ease-out 0.2s forwards; opacity: 0; }
+        p { animation: fadeInUp 0.8s ease-out 0.4s forwards; opacity: 0; }
+        .btn-group { animation: fadeInUp 0.8s ease-out 0.6s forwards; opacity: 0; }
+
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-20px); }
@@ -68,26 +76,18 @@ const landingPageHTML = `
     </style>
 </head>
 <body>
-    <header>
-    <header>
-        <img src="${logoBase64}" alt="Apollo Telecom" style="height: 60px; max-width: 100%; object-fit: contain;">
-    </header>
     <main class="hero">
+        <img src="${logoBase64}" alt="Apollo Telecom" style="height: 150px; max-width: 100%; object-fit: contain; margin-bottom: 1rem;">
         <div class="content">
             <h1>Sua conexão na palma da mão</h1>
             <p>Gerencie seu plano, acesse faturas e acompanhe seu consumo de internet com o novo aplicativo Apollo Telecom. Disponível para Android e iOS.</p>
         </div>
         
-        <div class="mockup-container">
-            <!-- Image served from public folder or Vercel static -->
-            <img src="/app-mockup.png" alt="Apollo Telecom App">
-        </div>
-
         <div class="btn-group">
-            <a href="https://play.google.com/store/apps/details?id=com.galhardyn.apollotelecom" class="btn btn-primary" target="_blank">
+            <a href="https://play.google.com/store/apps/details?id=com.galhardyn.apollotelecom" class="btn btn-google" target="_blank">
                 <i class="fa-brands fa-google-play"></i> Google Play
             </a>
-            <a href="#" class="btn btn-primary">
+            <a href="#" class="btn btn-apple">
                 <i class="fa-brands fa-apple"></i> App Store
             </a>
         </div>
