@@ -27,21 +27,22 @@ const CITY_IMAGES: Record<string, { folder: string; files: string[] }> = {
 export const getCityImageUrls = (cityId: string | undefined): string[] => {
     if (!cityId) {
         console.log('[CITY_IMAGE] cityId é undefined/null, usando imagem padrão');
-        return [`${BFF_URL}/public/cities/default.jpg`];
+        return [`${BFF_URL}/img/default`];
     }
 
     const cityInfo = CITY_IMAGES[cityId];
 
     if (cityInfo) {
+        // Usa a nova rota /img/:cityId/:filename
         const urls = cityInfo.files.map(file =>
-            `${BFF_URL}/public/cities/${encodeURIComponent(cityInfo.folder)}/${encodeURIComponent(file)}`
+            `${BFF_URL}/img/${cityId}/${encodeURIComponent(file)}`
         );
         console.log(`[CITY_IMAGE] cityId: "${cityId}" -> ${cityInfo.folder} (${urls.length} imagens)`);
         return urls;
     }
 
     console.log(`[CITY_IMAGE] cityId: "${cityId}" não encontrado, usando imagem padrão`);
-    return [`${BFF_URL}/public/cities/default.jpg`];
+    return [`${BFF_URL}/img/default`];
 };
 
 /**
@@ -56,5 +57,5 @@ export const hasCityImage = (cityId: string | undefined): boolean => {
  * URL da imagem padrão
  */
 export const getDefaultImageUrl = (): string => {
-    return `${BFF_URL}/public/cities/default.jpg`;
+    return `${BFF_URL}/img/default`;
 };

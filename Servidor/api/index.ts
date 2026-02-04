@@ -159,6 +159,108 @@ app.get('/city-images/:cityId', async (c) => {
     }
 });
 
+// Rota de debug para listar arquivos (REMOVER EM PRODUÇÃO)
+app.get('/debug/files', async (c) => {
+    try {
+        const fs = await import('fs');
+        const path = await import('path');
+
+        const scan = (dir: string, depth: number = 0): any => {
+            if (depth > 3) return 'max depth';
+            try {
+                const files = fs.readdirSync(dir);
+                const result: any = {};
+                for (const file of files) {
+                    const filePath = path.join(dir, file);
+                    try {
+                        const stat = fs.statSync(filePath);
+                        if (stat.isDirectory()) {
+                            result[file] = scan(filePath, depth + 1);
+                        } else {
+                            result[file] = stat.size;
+                        }
+                    } catch (e) {
+                        result[file] = 'error';
+                    }
+                }
+                return result;
+            } catch (e: any) {
+                return `error reading dir: ${e.message}`;
+            }
+        };
+
+        return c.json({
+            cwd: process.cwd(),
+            __dirname: __dirname,
+            files: scan(process.cwd())
+        });
+    } catch (error: any) {
+        return c.json({ error: error.message }, 500);
+    }
+});
+
+// Rota para servir imagens das cidades
+app.get('/img/:cityId/:filename', async (c) => {
+    const cityId = c.req.param('cityId');
+    const filename = c.req.param('filename');
+    const folderName = CITY_FOLDERS[cityId];
+
+    if (!folderName) {
+        return c.json({ error: 'City not found' }, 404);
+    }
+
+    try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const imagePath = path.join(process.cwd(), 'public', 'cities', folderName, filename);
+
+        if (!fs.existsSync(imagePath)) {
+            const defaultPath = path.join(process.cwd(), 'public', 'cities', 'default.jpg');
+            if (fs.existsSync(defaultPath)) {
+                const buffer = fs.readFileSync(defaultPath);
+                return new Response(new Uint8Array(buffer), {
+                    headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' }
+                });
+            }
+            return c.json({ error: 'Image not found' }, 404);
+        }
+
+        const buffer = fs.readFileSync(imagePath);
+        const ext = path.extname(filename).toLowerCase();
+        const mimeTypes: Record<string, string> = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp'
+        };
+
+        return new Response(new Uint8Array(buffer), {
+            headers: { 'Content-Type': mimeTypes[ext] || 'image/jpeg', 'Cache-Control': 'public, max-age=86400' }
+        });
+    } catch (error) {
+        console.error('Error serving image:', error);
+        return c.json({ error: 'Error serving image' }, 500);
+    }
+});
+
+// Rota para imagem default
+app.get('/img/default', async (c) => {
+    try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const defaultPath = path.join(process.cwd(), 'public', 'cities', 'default.jpg');
+
+        if (!fs.existsSync(defaultPath)) {
+            return c.json({ error: 'Default image not found' }, 404);
+        }
+
+        const buffer = fs.readFileSync(defaultPath);
+        return new Response(new Uint8Array(buffer), {
+            headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=86400' }
+        });
+    } catch (error) {
+        console.error('Error serving default image:', error);
+        return c.json({ error: 'Error serving image' }, 500);
+    }
+});
+
 // ==========================================
 // ROTAS DE AUTENTICAÇÃO (Públicas)
 // ==========================================
