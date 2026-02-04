@@ -20,6 +20,9 @@ export default function HomeScreen() {
     const [showPromo, setShowPromo] = useState(false);
     const [showContractPicker, setShowContractPicker] = useState(false);
 
+    // Debug: verificar dados do usuário
+    console.log('[HOME] user.cidade (ID):', user?.cidade);
+
     // Buscar faturas para mostrar alertas
     const { data: invoiceData } = useInvoiceHistory();
 
@@ -51,7 +54,7 @@ export default function HomeScreen() {
 
     return (
         <View className="flex-1 bg-slate-50">
-            <PromotionalModal visible={showPromo} onClose={() => setShowPromo(false)} />
+            <PromotionalModal visible={showPromo} onClose={() => setShowPromo(false)} cityName={user?.cidade} />
 
             {/* Header com Gradiente */}
             <View className="h-[32%] w-full relative">

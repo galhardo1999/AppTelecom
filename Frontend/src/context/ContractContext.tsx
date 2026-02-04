@@ -31,14 +31,23 @@ export function ContractProvider({ children }: { children: ReactNode }) {
 
             try {
                 setLoading(true);
-                const contractsList = await ixcApi.getClientContracts(user.id);
+                const response = await ixcApi.getClientContracts(user.id);
+
+                // Garantir que contractsList é um array
+                const contractsList = Array.isArray(response) ? response : [];
                 setContracts(contractsList);
 
                 // Selecionar o primeiro contrato ativo ou o primeiro da lista
-                const activeContract = contractsList.find((c: Contract) => c.status === 'A') || contractsList[0];
-                setSelectedContractState(activeContract || null);
+                if (contractsList.length > 0) {
+                    const activeContract = contractsList.find((c: Contract) => c.status === 'A') || contractsList[0];
+                    setSelectedContractState(activeContract || null);
+                } else {
+                    setSelectedContractState(null);
+                }
             } catch (error) {
                 console.error('Error loading contracts:', error);
+                setContracts([]);
+                setSelectedContractState(null);
             } finally {
                 setLoading(false);
             }

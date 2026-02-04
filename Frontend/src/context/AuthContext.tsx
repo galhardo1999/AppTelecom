@@ -8,6 +8,7 @@ type User = {
     razao: string; // Name
     hotsite_email: string;
     endereco?: string;
+    cidadeNome?: string; // Nome da cidade do usuário
     [key: string]: any;
 };
 

@@ -105,6 +105,67 @@ app.get('/', (c) => {
 });
 
 // ==========================================
+// MAPEAMENTO DE CIDADES (ID -> Nome da pasta)
+// ==========================================
+const CITY_FOLDERS: Record<string, string> = {
+    '3297': 'Aracatuba',
+    '3335': 'Bento de Abreu',
+    '3339': 'Birigui',
+    '3472': 'Guararapes',
+    '3664': 'Panorama',
+    '3675': 'Pauliceia',
+    '5571': 'Pauliceia', // Código alternativo
+    '3731': 'Presidente Venceslau',
+    '3792': 'Santa Mercedes',
+};
+
+// Rota para listar imagens de uma cidade (pública)
+app.get('/api/city-images/:cityId', async (c) => {
+    const cityId = c.req.param('cityId');
+    const folderName = CITY_FOLDERS[cityId];
+
+    if (!folderName) {
+        // Retorna imagem default se cidade não mapeada
+        return c.json({
+            cityId,
+            folder: null,
+            images: ['/public/cities/default.jpg']
+        });
+    }
+
+    try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const cityPath = path.join(process.cwd(), 'public', 'cities', folderName);
+
+        // Ler arquivos da pasta
+        const files = fs.readdirSync(cityPath);
+        const imageFiles = files.filter((file: string) =>
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
+        );
+
+        // Construir URLs das imagens
+        const baseUrl = '/public/cities';
+        const images = imageFiles.map((file: string) =>
+            `${baseUrl}/${encodeURIComponent(folderName)}/${encodeURIComponent(file)}`
+        );
+
+        return c.json({
+            cityId,
+            folder: folderName,
+            images: images.length > 0 ? images : ['/public/cities/default.jpg']
+        });
+    } catch (error) {
+        console.error('Error reading city images:', error);
+        return c.json({
+            cityId,
+            folder: folderName,
+            images: ['/public/cities/default.jpg']
+        });
+    }
+});
+
+// ==========================================
 // ROTAS DE AUTENTICAÇÃO (Públicas) - com rate limiting restrito
 // ==========================================
 
@@ -149,9 +210,18 @@ app.post('/auth/login', loginRateLimiter, async (c) => {
 
         const token = await generateToken(tokenPayload);
 
+        // Buscar nome da cidade
+        let cidadeNome = '';
+        if (client.cidade) {
+            cidadeNome = await ixcService.getCityName(client.cidade);
+            console.log(`[LOGIN] Cidade ID: ${client.cidade}, Nome: ${cidadeNome}`);
+        }
+
         // Retornar dados do usuário (sem campos sensíveis)
-        const userData = { ...client };
+        const userData = { ...client, cidadeNome };
         delete userData.senha;
+
+        console.log(`[LOGIN] Retornando userData com cidadeNome: ${cidadeNome}`);
 
         return c.json({
             token,
