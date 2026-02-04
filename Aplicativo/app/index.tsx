@@ -14,13 +14,18 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    Keyboard,
+    LayoutAnimation
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertType, CustomAlert } from '../src/components/CustomAlert';
 import { useAuth } from '../src/context/AuthContext';
 import { getBiometryIcon, getBiometryLabel, useBiometrics } from '../src/hooks/useBiometrics';
+
+// Componente de imagem animado
+const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -33,6 +38,60 @@ export default function LoginScreen() {
     const [activeField, setActiveField] = useState<string | null>(null);
     const [rememberEmail, setRememberEmail] = useState(false);
     const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+
+    // Variáveis de animação
+    const logoScale = useSharedValue(1);
+    const contentTranslateY = useSharedValue(0);
+    const titleOpacity = useSharedValue(1);
+    const titleHeight = useSharedValue(80); // Altura estimada do bloco de título
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const keyboardWillShow = Keyboard.addListener(showEvent, () => {
+            // Teclado abriu: Diminuir logo, subir conteúdo, ocultar título
+            logoScale.value = withTiming(0.6, { duration: 300 }); // Reduz para 60%
+            contentTranslateY.value = withTiming(-120, { duration: 300 }); // Sobe mais para mostrar botão
+            titleOpacity.value = withTiming(0, { duration: 200 }); // Oculta título
+            titleHeight.value = withTiming(0, { duration: 300 }); // Remove espaço do título
+        });
+
+        const keyboardWillHide = Keyboard.addListener(hideEvent, () => {
+            // Teclado fechou: Restaurar
+            logoScale.value = withSpring(1);
+            contentTranslateY.value = withSpring(0);
+            titleOpacity.value = withTiming(1, { duration: 300 });
+            titleHeight.value = withTiming(80, { duration: 300 });
+        });
+
+        return () => {
+            keyboardWillShow.remove();
+            keyboardWillHide.remove();
+        };
+    }, []);
+
+    // Estilos animados
+    const logoStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: logoScale.value }],
+        };
+    });
+
+    const containerStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: contentTranslateY.value }],
+        };
+    });
+
+    const titleContainerStyle = useAnimatedStyle(() => {
+        return {
+            opacity: titleOpacity.value,
+            height: titleHeight.value,
+            overflow: 'hidden',
+            marginBottom: titleOpacity.value === 0 ? 0 : 32 // Anima a margem também indiretamente
+        };
+    });
 
     // Custom Alert State
     const [alertVisible, setAlertVisible] = useState(false);
@@ -103,6 +162,14 @@ export default function LoginScreen() {
     };
 
     const handleLogin = async () => {
+        if (!email) {
+            showAlert('Atenção', 'Por favor, preencha o campo usuario.', 'warning');
+            return;
+        }
+        if (!password) {
+            showAlert('Atenção', 'Por favor, preencha o campo senha.', 'warning');
+            return;
+        }
         if (!email || !password) {
             showAlert('Atenção', 'Por favor, preencha todos os campos.', 'warning');
             return;
@@ -195,25 +262,25 @@ export default function LoginScreen() {
                     <Animated.View
                         className="w-full"
                         entering={FadeInDown.delay(200).duration(1000).springify()}
+                        style={containerStyle}
                     >
-                        {/* Seção do Logo */}
-                        <View className="items-center mb-10">
-                            <Image
+                        {/* Seção do Logo Animado */}
+                        <View className="items-center mb-6">
+                            <AnimatedImage
                                 source={require('../assets/logo.png')}
-                                style={{ width: 180, height: 80 }}
-                                resizeMode="contain"
+                                style={[{ width: 180, height: 80, resizeMode: 'contain' }, logoStyle]}
                             />
                         </View>
 
-                        {/* Seção do Título */}
-                        <View className="items-center mb-8">
+                        {/* Seção do Título Animada (Some ao abrir teclado) */}
+                        <Animated.View className="items-center" style={titleContainerStyle}>
                             <Text className="text-3xl font-bold text-slate-900 text-center">
                                 Bem-vindo de volta
                             </Text>
                             <Text className="text-slate-500 mt-2 text-base text-center">
                                 Acesse sua conta para continuar
                             </Text>
-                        </View>
+                        </Animated.View>
 
                         {/* Botão de Login Biométrico (se disponível) */}
                         {canUseBiometrics && (
@@ -379,7 +446,7 @@ export default function LoginScreen() {
 
                         <View className="bg-slate-50 rounded-xl p-4 mb-6">
                             <View className="flex-row items-start mb-3">
-                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
+                                e                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
                                     <Text className="text-white font-bold text-xs">1</Text>
                                 </View>
                                 <Text className="flex-1 text-slate-700 text-sm">

@@ -1,16 +1,13 @@
+/**
+ * Middleware de Rate Limiting
+ * Suporta armazenamento em memória ou Redis (via cache)
+ */
+
 import { Context, Next } from 'hono';
+import type { RateLimitConfig, RateLimitEntry, JWTPayload } from '../types/index.js';
 
-interface RateLimitConfig {
-    windowMs: number;      // Janela de tempo em milissegundos
-    maxRequests: number;   // Máximo de requisições por janela
-}
-
-interface RateLimitEntry {
-    count: number;
-    resetTime: number;
-}
-
-// Armazenamento em memória (para produção, use Redis)
+// Armazenamento em memória (fallback)
+// NOTA: Para escala horizontal, configure Upstash Redis via UPSTASH_REDIS_URL
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 // Limpar entradas expiradas periodicamente
@@ -21,24 +18,25 @@ setInterval(() => {
             rateLimitStore.delete(key);
         }
     }
-}, 60000); // Limpar a cada minuto
+}, 60000);
 
 /**
- * Rate limiter middleware factory
+ * Factory de rate limiter
  */
 export function rateLimiter(config: RateLimitConfig) {
     return async (c: Context, next: Next) => {
-        // Obter identificador do cliente (IP ou ID do usuário do JWT)
-        const user = c.get('user');
-        const clientId = user?.userId || c.req.header('x-forwarded-for') || 'unknown';
+        // Obter identificador do cliente
+        const user = c.get('user') as JWTPayload | undefined;
+        const forwardedFor = c.req.header('x-forwarded-for');
+        const clientIp = forwardedFor?.split(',')[0]?.trim();
+        const clientId = user?.userId || clientIp || 'unknown';
 
         const now = Date.now();
-        const key = `${clientId}:${c.req.path}`;
+        const key = `ratelimit:${clientId}:${c.req.path}`;
 
         let entry = rateLimitStore.get(key);
 
         if (!entry || now > entry.resetTime) {
-            // Criar nova entrada
             entry = {
                 count: 1,
                 resetTime: now + config.windowMs
@@ -48,7 +46,7 @@ export function rateLimiter(config: RateLimitConfig) {
             entry.count++;
         }
 
-        // Definir headers de rate limit
+        // Headers de rate limit
         c.header('X-RateLimit-Limit', config.maxRequests.toString());
         c.header('X-RateLimit-Remaining', Math.max(0, config.maxRequests - entry.count).toString());
         c.header('X-RateLimit-Reset', Math.ceil(entry.resetTime / 1000).toString());
@@ -68,17 +66,17 @@ export function rateLimiter(config: RateLimitConfig) {
 }
 
 /**
- * Stricter rate limiter for login attempts (prevent brute force)
+ * Rate limiter para tentativas de login (mais restrito)
  */
 export const loginRateLimiter = rateLimiter({
-    windowMs: 60 * 1000, // 1 minuto
-    maxRequests: 30      // 30 tentativas por minuto (Aumentado para testes)
+    windowMs: 60 * 1000,  // 1 minuto
+    maxRequests: 10       // 10 tentativas por minuto
 });
 
 /**
- * Standard rate limiter for API requests
+ * Rate limiter padrão para API
  */
 export const apiRateLimiter = rateLimiter({
-    windowMs: 60 * 1000, // 1 minuto
-    maxRequests: 60      // 60 requisições por minuto
+    windowMs: 60 * 1000,  // 1 minuto
+    maxRequests: 60       // 60 requisições por minuto
 });

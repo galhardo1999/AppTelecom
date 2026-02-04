@@ -9,6 +9,8 @@ interface ContractContextType {
     selectedContractId: string | null;
     setSelectedContract: (contract: Contract) => void;
     loading: boolean;
+    hasUserSelectedContract: boolean; // Indica se usuário já escolheu contrato nesta sessão
+    setHasUserSelectedContract: (value: boolean) => void;
 }
 
 const ContractContext = createContext<ContractContextType | undefined>(undefined);
@@ -18,13 +20,16 @@ export function ContractProvider({ children }: { children: ReactNode }) {
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [selectedContract, setSelectedContractState] = useState<Contract | null>(null);
     const [loading, setLoading] = useState(true);
+    const [hasUserSelectedContract, setHasUserSelectedContract] = useState(false);
 
     // Carregar contratos quando o usuário mudar
     useEffect(() => {
         const loadContracts = async () => {
             if (!user?.id) {
+                // Reset de todos os estados no logout
                 setContracts([]);
                 setSelectedContractState(null);
+                setHasUserSelectedContract(false); // Reset para próximo login
                 setLoading(false);
                 return;
             }
@@ -68,6 +73,8 @@ export function ContractProvider({ children }: { children: ReactNode }) {
                 selectedContractId: selectedContract?.id || null,
                 setSelectedContract,
                 loading,
+                hasUserSelectedContract,
+                setHasUserSelectedContract,
             }}
         >
             {children}

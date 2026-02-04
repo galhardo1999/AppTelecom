@@ -2,19 +2,34 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useContract } from '../../src/context/ContractContext';
 
 export default function DashboardLayout() {
+    const { contracts, hasUserSelectedContract, loading } = useContract();
+    const insets = useSafeAreaInsets();
+
+    // Esconder tab bar se usuário tem múltiplos contratos e ainda não escolheu
+    const needsContractSelection = contracts.length > 1 && !hasUserSelectedContract;
+    const shouldHideTabBar = needsContractSelection || loading;
+
+    // Calcular altura e padding do tab bar baseado no dispositivo
+    // Para Android com barra de navegação: usa insets.bottom
+    // Para iOS: usa padding fixo de 30
+    const bottomPadding = Platform.OS === 'ios' ? 30 : Math.max(insets.bottom, 10);
+    const tabBarHeight = Platform.OS === 'ios' ? 90 : 60 + bottomPadding;
+
     return (
         <Tabs
             screenOptions={{
                 headerShown: false,
                 tabBarActiveTintColor: '#7c3aed',
                 tabBarInactiveTintColor: '#94a3b8',
-                tabBarStyle: {
+                tabBarStyle: shouldHideTabBar ? { display: 'none' } : {
                     backgroundColor: '#ffffff',
                     borderTopColor: '#e2e8f0',
-                    height: Platform.OS === 'ios' ? 90 : 70,
-                    paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+                    height: tabBarHeight,
+                    paddingBottom: bottomPadding,
                     paddingTop: 10,
                 },
                 tabBarLabelStyle: {

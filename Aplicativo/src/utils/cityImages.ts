@@ -26,7 +26,6 @@ const CITY_IMAGES: Record<string, { folder: string; files: string[] }> = {
  */
 export const getCityImageUrls = (cityId: string | undefined): string[] => {
     if (!cityId) {
-        console.log('[CITY_IMAGE] cityId é undefined/null, usando imagem padrão');
         return [`${BFF_URL}/img/default`];
     }
 
@@ -37,11 +36,9 @@ export const getCityImageUrls = (cityId: string | undefined): string[] => {
         const urls = cityInfo.files.map(file =>
             `${BFF_URL}/img/${cityId}/${encodeURIComponent(file)}`
         );
-        console.log(`[CITY_IMAGE] cityId: "${cityId}" -> ${cityInfo.folder} (${urls.length} imagens)`);
         return urls;
     }
 
-    console.log(`[CITY_IMAGE] cityId: "${cityId}" não encontrado, usando imagem padrão`);
     return [`${BFF_URL}/img/default`];
 };
 

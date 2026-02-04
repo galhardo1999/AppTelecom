@@ -1,52 +1,49 @@
+/**
+ * Middleware de Autenticação JWT
+ */
+
 import { Context, Next } from 'hono';
 import * as jose from 'jose';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
+import type { JWTPayload } from '../types/index.js';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret');
+// Chave secreta para JWT
+const SECRET_KEY = new TextEncoder().encode(JWT_SECRET);
 
-export interface JWTPayload {
-    userId: string;
-    email: string;
-    name: string;
-}
+// Re-exportar o tipo para uso nas rotas
+export type { JWTPayload };
 
 /**
- * Generate JWT token
+ * Gera um token JWT
  */
 export async function generateToken(payload: JWTPayload): Promise<string> {
-    const expiresIn = process.env.JWT_EXPIRES_IN || '1h';
-
-    // Analisar tempo de expiração
-    let expirationTime = '1h';
-    if (expiresIn.endsWith('h')) {
-        expirationTime = expiresIn;
-    } else if (expiresIn.endsWith('d')) {
-        expirationTime = expiresIn;
-    }
-
     const token = await new jose.SignJWT({ ...payload })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
-        .setExpirationTime(expirationTime)
-        .sign(JWT_SECRET);
+        .setExpirationTime(JWT_EXPIRES_IN)
+        .sign(SECRET_KEY);
 
     return token;
 }
 
 /**
- * Verify JWT token
+ * Verifica um token JWT
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
     try {
-        const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+        const { payload } = await jose.jwtVerify(token, SECRET_KEY);
         return payload as unknown as JWTPayload;
-    } catch (error) {
-        console.error('JWT verification failed:', error);
+    } catch (error: any) {
+        // Log apenas em desenvolvimento e sem expor detalhes
+        if (error.code !== 'ERR_JWT_EXPIRED') {
+            console.error('[AUTH] Token verification failed:', error.code || 'unknown');
+        }
         return null;
     }
 }
 
 /**
- * Auth middleware for protected routes
+ * Middleware de autenticação para rotas protegidas
  */
 export async function authMiddleware(c: Context, next: Next) {
     const authHeader = c.req.header('Authorization');

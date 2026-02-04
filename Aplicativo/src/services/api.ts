@@ -92,13 +92,13 @@ export const bffApi = {
     },
 
     // Obter faturas em aberto
-    getOpenInvoices: async (clientId?: string) => {
+    getOpenInvoices: async () => {
         const response = await api.get('/api/invoices');
         return response.data;
     },
 
     // Obter contratos do cliente
-    getClientContracts: async (clientId?: string) => {
+    getClientContracts: async () => {
         const response = await api.get('/api/contracts');
         return response.data;
     },
@@ -110,7 +110,7 @@ export const bffApi = {
     },
 
     // Obter consumo de internet
-    getInternetUsage: async (clientId?: string) => {
+    getInternetUsage: async () => {
         const response = await api.get('/api/usage');
         return response.data;
     },
