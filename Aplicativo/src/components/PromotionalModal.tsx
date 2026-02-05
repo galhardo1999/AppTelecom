@@ -50,7 +50,7 @@ export function PromotionalModal({ visible, onClose, cityName }: PromotionalModa
             <Image
                 source={{ uri: item }}
                 className="w-full h-full"
-                style={{ resizeMode: 'cover' }}
+                style={{ resizeMode: 'contain' }}
             />
         </View>
     );
@@ -91,7 +91,7 @@ export function PromotionalModal({ visible, onClose, cityName }: PromotionalModa
                         <Image
                             source={{ uri: images[0] }}
                             className="w-full h-full"
-                            style={{ resizeMode: 'cover' }}
+                            style={{ resizeMode: 'contain' }}
                         />
                     ) : (
                         // Multiple images - Carousel

@@ -51,8 +51,8 @@ const faqData: FAQItem[] = [
     {
         question: 'Minha internet está lenta',
         icon: 'speedometer-outline',
-        iconColor: '#f59e0b',
-        bgColor: 'bg-amber-50',
+        iconColor: '#7c3aed',
+        bgColor: 'bg-purple-50',
         whatsappMessage: 'Olá, Minha internet está muito lenta, poderia me ajudar?',
         steps: [
             '1. Reinicie seu roteador/modem desligando-o da tomada por 30 segundos',
@@ -64,8 +64,8 @@ const faqData: FAQItem[] = [
     {
         question: 'Como pagar minha fatura',
         icon: 'card-outline',
-        iconColor: '#22c55e',
-        bgColor: 'bg-green-50',
+        iconColor: '#7c3aed',
+        bgColor: 'bg-purple-50',
         whatsappMessage: 'Olá, Gostaria de pagar minha Fatura, poderia me ajudar?',
         steps: [
             '1. Acesse a aba "Faturas" no menu inferior do app',
@@ -81,8 +81,8 @@ const faqData: FAQItem[] = [
     {
         question: 'Segunda via de boleto',
         icon: 'document-text-outline',
-        iconColor: '#3b82f6',
-        bgColor: 'bg-blue-50',
+        iconColor: '#7c3aed',
+        bgColor: 'bg-purple-50',
         whatsappMessage: 'Olá, Gostaria da segunda via do boleto, poderia me ajudar?',
         steps: [
             '1. Acesse a aba "Faturas" no menu inferior do app',

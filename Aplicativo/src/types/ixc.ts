@@ -29,11 +29,12 @@ export interface Contract {
     plano_nome?: string; // Mapear de descricao_aux_plano_venda
     descricao_aux_plano_venda?: string;
 
-    // Endereço (vem do cliente)
+    // Endereço (vem do contrato ou cliente como fallback)
     endereco: string;
     numero: string;
     bairro: string;
     cidade: string;
+    cidadeId?: string; // ID da cidade para o modal promocional
     estado?: string;
     complemento?: string;
     cep?: string;

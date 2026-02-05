@@ -194,11 +194,11 @@ export default function PlanoScreen() {
                                 )}
 
                                 {/* Endereço concatenado com número */}
-                                {(selectedContract.endereco || user?.endereco) && (
+                                {selectedContract.endereco && (
                                     <InfoRow
                                         icon="location-outline"
                                         label="Endereço"
-                                        value={`${selectedContract.endereco || user?.endereco}${selectedContract.numero ? `, ${selectedContract.numero}` : ''}`}
+                                        value={`${selectedContract.endereco}, ${selectedContract.numero || 'S/N'}`}
                                     />
                                 )}
 
@@ -290,15 +290,21 @@ export default function PlanoScreen() {
                                             />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>
-                                                Contrato #{contract.id}
-                                            </Text>
-                                            <View className="flex-row items-center mt-1">
-                                                <View className={`w-2 h-2 rounded-full mr-2 ${statusInfo.dotColor}`} />
-                                                <Text className={`text-sm ${statusInfo.textColor}`}>
-                                                    {statusInfo.label}
+                                            {/* Número do contrato + Badge de status na mesma linha */}
+                                            <View className="flex-row items-center">
+                                                <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>
+                                                    Contrato #{contract.id}
                                                 </Text>
+                                                <View className={`flex-row items-center px-2 py-0.5 rounded-full ml-2 ${statusInfo.color}`}>
+                                                    <View className={`w-1.5 h-1.5 rounded-full mr-1 ${statusInfo.dotColor}`} />
+                                                    <Text className={`text-xs font-semibold ${statusInfo.textColor}`}>
+                                                        {statusInfo.label}
+                                                    </Text>
+                                                </View>
                                             </View>
+                                            <Text className="text-slate-500 text-sm mt-1" numberOfLines={1}>
+                                                {contract.endereco ? `${contract.endereco}, ${contract.numero || 'S/N'}` : 'Endereço não disponível'}
+                                            </Text>
                                         </View>
                                         {isSelected && (
                                             <Ionicons name="checkmark-circle" size={24} color="#7c3aed" />

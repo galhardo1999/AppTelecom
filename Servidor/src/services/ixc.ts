@@ -277,6 +277,7 @@ export const ixcService = {
 
     /**
      * Get client contracts with full address data
+     * Prioriza endereço do contrato, usa dados do cliente como fallback
      */
     getContracts: async (clientId: string) => {
         try {
@@ -292,7 +293,7 @@ export const ixcService = {
 
             const contracts = response.data?.registros || [];
 
-            // Buscar dados do cliente para pegar o endereço completo
+            // Buscar dados do cliente como fallback para endereço
             const clientResponse = await ixcClient.post('/cliente', {
                 qtype: 'cliente.id',
                 query: clientId,
@@ -300,27 +301,40 @@ export const ixcService = {
             });
             const clientData = clientResponse.data?.registros?.[0];
 
-            // Buscar nomes de cidade e estado
-            let cidadeNome = '';
-            let estadoNome = '';
+            // Processar cada contrato com busca de cidade/estado específica
+            const processedContracts = await Promise.all(contracts.map(async (contract: any) => {
+                // Usar endereço do contrato com prioridade, cliente como fallback
+                const endereco = contract.endereco || clientData?.endereco || '';
+                const numero = contract.numero || clientData?.numero || '';
+                const bairro = contract.bairro || clientData?.bairro || '';
 
-            if (clientData?.cidade) {
-                cidadeNome = await ixcService.getCityName(clientData.cidade);
-            }
-            if (clientData?.estado) {
-                estadoNome = await ixcService.getStateName(clientData.estado);
-            }
+                // Usar cidade/estado do contrato se disponível, senão do cliente
+                const cidadeId = contract.cidade || clientData?.cidade;
+                const estadoId = contract.estado || clientData?.estado;
 
-            // Adicionar dados de endereço aos contratos
-            return contracts.map((contract: any) => ({
-                ...contract,
-                descricao_aux_plano_venda: contract.descricao_aux_plano_venda || '',
-                endereco: clientData?.endereco || contract.endereco || '',
-                numero: clientData?.numero || '',
-                bairro: clientData?.bairro || '',
-                cidade: cidadeNome,
-                estado: estadoNome,
+                let cidadeNome = '';
+                let estadoNome = '';
+
+                if (cidadeId) {
+                    cidadeNome = await ixcService.getCityName(cidadeId);
+                }
+                if (estadoId) {
+                    estadoNome = await ixcService.getStateName(estadoId);
+                }
+
+                return {
+                    ...contract,
+                    descricao_aux_plano_venda: contract.descricao_aux_plano_venda || '',
+                    endereco,
+                    numero,
+                    bairro,
+                    cidade: cidadeNome,
+                    cidadeId: cidadeId, // ID da cidade para o modal promocional
+                    estado: estadoNome,
+                };
             }));
+
+            return processedContracts;
         } catch (error) {
             console.error('IXC getContracts error:', error);
             throw error;

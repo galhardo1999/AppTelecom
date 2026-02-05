@@ -28,26 +28,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Check for persisted session
-        const loadSession = async () => {
+        // Limpar sessão ao iniciar o app - força login a cada abertura
+        // (sessão só persiste enquanto app está em segundo plano/minimizado)
+        const clearSessionOnStart = async () => {
             try {
-                const [storedToken, storedUser] = await Promise.all([
-                    SecureStore.getItemAsync('access_token'),
-                    SecureStore.getItemAsync('user_session'),
+                // Limpar tokens e sessão armazenados
+                await Promise.all([
+                    SecureStore.deleteItemAsync('access_token'),
+                    SecureStore.deleteItemAsync('user_session'),
                 ]);
-
-                if (storedToken && storedUser) {
-                    // Set token in API client
-                    setAccessToken(storedToken);
-                    setUser(JSON.parse(storedUser));
-                }
+                setAccessToken(null);
+                setUser(null);
             } catch (error) {
-                console.error('Failed to load session', error);
+                console.error('Failed to clear session', error);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadSession();
+        clearSessionOnStart();
     }, []);
 
     // Listen for 401 unauthorized events from API

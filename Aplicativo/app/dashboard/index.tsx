@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PromotionalModal } from '../../src/components/PromotionalModal';
@@ -15,7 +15,7 @@ import { formatCurrency, formatDateShort, formatFullName } from '../../src/utils
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const {
         contracts,
         selectedContract,
@@ -33,6 +33,17 @@ export default function HomeScreen() {
 
     // Mostrar tela de seleção quando: contratos carregaram, tem mais de 1, e usuário não escolheu ainda
     const needsContractSelection = !contractsLoading && contracts.length > 1 && !hasUserSelectedContract;
+
+    // Bloquear botão de voltar na tela de seleção de contrato
+    useEffect(() => {
+        if (needsContractSelection) {
+            const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+                // Retorna true para bloquear o comportamento padrão
+                return true;
+            });
+            return () => backHandler.remove();
+        }
+    }, [needsContractSelection]);
 
     // Quando contratos carregarem, verificar se precisa de seleção
     useEffect(() => {
@@ -76,6 +87,9 @@ export default function HomeScreen() {
     const hasOverdue = overdueInvoicesForContract.length > 0;
     const overdueInvoice = hasOverdue ? overdueInvoicesForContract[0] : null;
 
+    // Verificar se o contrato tem pendências (pré-contrato aguardando assinatura)
+    const hasPendencias = selectedContract?.status === 'P' && selectedContract?.status_internet === 'AA';
+
     const handleSelectContract = (contract: Contract) => {
         setSelectedContract(contract);
         setShowContractPicker(false);
@@ -96,25 +110,32 @@ export default function HomeScreen() {
         return (
             <View className="flex-1 bg-white">
                 <SafeAreaView className="flex-1 px-6">
-                    <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-                        {/* Logo com animação */}
-                        <Animated.View
-                            className="mt-8 mb-10"
-                            entering={FadeInDown.delay(100).duration(600).springify()}
+                    {/* Header com botão de logout */}
+                    <Animated.View
+                        className="flex-row justify-between items-center mt-4 mb-6"
+                        entering={FadeInDown.delay(50).duration(600).springify()}
+                    >
+                        <Image
+                            source={require('../../assets/logo.png')}
+                            style={{ width: 120, height: 50 }}
+                            resizeMode="contain"
+                        />
+                        <TouchableOpacity
+                            onPress={signOut}
+                            className="flex-row items-center bg-red-50 px-3 py-2 rounded-xl"
                         >
-                            <Image
-                                source={require('../../assets/logo.png')}
-                                style={{ width: 120, height: 50 }}
-                                resizeMode="contain"
-                            />
-                        </Animated.View>
+                            <Ionicons name="log-out-outline" size={20} color="#dc2626" />
+                            <Text className="text-red-600 font-medium ml-2">Sair</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
 
+                    <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
                         {/* Título com animação */}
                         <Animated.Text
                             className="text-3xl font-bold text-slate-900 mb-8"
                             entering={FadeInDown.delay(200).duration(600).springify()}
                         >
-                            Olá, selecione um produto para continuar
+                            Olá, selecione o contrato para continuar
                         </Animated.Text>
 
                         {/* Seção Meus Contratos com animação */}
@@ -142,7 +163,7 @@ export default function HomeScreen() {
                                             {contract.contrato || contract.id}
                                         </Text>
                                         <Text className="text-slate-800 font-medium text-base" numberOfLines={2}>
-                                            {contract.endereco || 'Endereço não disponível'}
+                                            {contract.endereco ? `${contract.endereco}, ${contract.numero || 'S/N'}` : 'Endereço não disponível'}
                                         </Text>
                                         <Text className="text-slate-500 text-sm mt-1">
                                             Internet
@@ -161,7 +182,7 @@ export default function HomeScreen() {
     // Dashboard normal
     return (
         <View className="flex-1 bg-slate-50">
-            <PromotionalModal visible={showPromo} onClose={() => setShowPromo(false)} cityName={user?.cidade} />
+            <PromotionalModal visible={showPromo} onClose={() => setShowPromo(false)} cityName={selectedContract?.cidadeId} />
 
             {/* Header com Gradiente */}
             <View className="h-[32%] w-full relative">
@@ -255,6 +276,29 @@ export default function HomeScreen() {
                     </View>
                 )}
 
+                {/* Alerta de Pendências - Pré-contrato aguardando assinatura */}
+                {hasPendencias && (
+                    <View className="bg-amber-50 rounded-2xl p-4 mb-4 border border-amber-200">
+                        <View className="flex-row items-center">
+                            <View className="w-10 h-10 bg-amber-100 rounded-xl items-center justify-center mr-3">
+                                <Ionicons name="alert-circle" size={22} color="#d97706" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-amber-700 font-bold text-sm">Pendências</Text>
+                                <Text className="text-amber-600 text-xs">
+                                    Você tem documentos pendentes para assinar
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => router.push('/dashboard/perfil')}
+                                className="bg-amber-600 px-3 py-2 rounded-lg"
+                            >
+                                <Text className="text-white font-bold text-xs">VER</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
                 {/* Grid de Ações Rápidas */}
                 <Text className="text-slate-500 text-sm font-medium mb-3 uppercase tracking-wide">Acesso Rápido</Text>
                 <View className="flex-row flex-wrap justify-between mb-4">
@@ -314,7 +358,7 @@ export default function HomeScreen() {
                                                 {contract.contrato || contract.id}
                                             </Text>
                                             <Text className="text-slate-500 text-sm">
-                                                {contract.endereco || 'Internet'}
+                                                {contract.endereco ? `${contract.endereco}, ${contract.numero || 'S/N'}` : 'Internet'}
                                             </Text>
                                         </View>
                                         {isSelected && (
