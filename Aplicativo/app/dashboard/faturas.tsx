@@ -29,6 +29,7 @@ import { Contract, Invoice } from '../../src/types/ixc';
 import { formatCurrency, formatDateShort, formatFullName, getMonthName, getMonthYear } from '../../src/utils/formatters';
 import { showToast } from '../../src/utils/toast';
 
+
 type TabType = 'vencidas' | 'abertas' | 'pagas';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

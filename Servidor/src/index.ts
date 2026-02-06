@@ -156,7 +156,7 @@ const CITY_FOLDERS: Record<string, string> = {
     '3792': 'Santa Mercedes',
 };
 
-app.get('/api/city-images/:cityId', async (c) => {
+app.get('/cities/:cityId/images', async (c) => {
     const cityId = c.req.param('cityId');
     const folderName = CITY_FOLDERS[cityId];
 
@@ -197,6 +197,57 @@ app.get('/api/city-images/:cityId', async (c) => {
     }
 });
 
+// Rota para buscar banners da pasta Banner de cada cidade
+app.get('/cities/:cityId/banners', async (c) => {
+    const cityId = c.req.param('cityId');
+    const folderName = CITY_FOLDERS[cityId];
+
+    if (!folderName) {
+        return c.json({
+            cityId,
+            folder: null,
+            banners: []
+        });
+    }
+
+    try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const bannerPath = path.join(process.cwd(), 'public', 'cities', folderName, 'Banner');
+
+        // Verificar se a pasta Banner existe
+        if (!fs.existsSync(bannerPath)) {
+            return c.json({
+                cityId,
+                folder: folderName,
+                banners: []
+            });
+        }
+
+        const files = fs.readdirSync(bannerPath);
+        const imageFiles = files.filter((file: string) =>
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
+        );
+
+        const baseUrl = '/public/cities';
+        const banners = imageFiles.map((file: string) =>
+            `${baseUrl}/${encodeURIComponent(folderName)}/Banner/${encodeURIComponent(file)}`
+        );
+
+        return c.json({
+            cityId,
+            folder: folderName,
+            banners
+        });
+    } catch (error) {
+        return c.json({
+            cityId,
+            folder: folderName,
+            banners: []
+        });
+    }
+});
+
 // ==========================================
 // ROTAS DE AUTENTICAÇÃO (Públicas)
 // ==========================================
@@ -207,9 +258,18 @@ app.route('/auth', authRoutes);
 // ROTAS PROTEGIDAS DA API
 // ==========================================
 
-// Aplicar middleware de rate limiter e auth para todas as rotas /api/*
-app.use('/api/*', apiRateLimiter);
-app.use('/api/*', authMiddleware);
+// Aplicar middleware de rate limiter e auth para rotas protegidas
+// Nota: city-images e city-banners são rotas públicas, não precisam de auth
+app.use('/api/user/*', apiRateLimiter);
+app.use('/api/user/*', authMiddleware);
+app.use('/api/invoices/*', apiRateLimiter);
+app.use('/api/invoices/*', authMiddleware);
+app.use('/api/contracts/*', apiRateLimiter);
+app.use('/api/contracts/*', authMiddleware);
+app.use('/api/usage', apiRateLimiter);
+app.use('/api/usage', authMiddleware);
+app.use('/api/contract/*', apiRateLimiter);
+app.use('/api/contract/*', authMiddleware);
 
 // Montar rotas protegidas
 app.route('/api/user', userRoutes);

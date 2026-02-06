@@ -113,10 +113,43 @@ const CITY_FOLDERS: Record<string, string> = {
     '3792': 'Santa Mercedes',
 };
 
+// Mapeamento reverso por nome da cidade (para quando o ID é inválido)
+const CITY_NAME_TO_FOLDER: Record<string, string> = {
+    'aracatuba': 'Aracatuba',
+    'araçatuba': 'Aracatuba',
+    'bento de abreu': 'Bento de Abreu',
+    'birigui': 'Birigui',
+    'guararapes': 'Guararapes',
+    'panorama': 'Panorama',
+    'pauliceia': 'Pauliceia',
+    'presidente venceslau': 'Presidente Venceslau',
+    'santa mercedes': 'Santa Mercedes',
+};
+
+// Função auxiliar para obter a pasta da cidade por ID ou nome
+const getCityFolder = (cityIdOrName: string): string | null => {
+    // Tentar primeiro pelo ID
+    if (CITY_FOLDERS[cityIdOrName]) {
+        return CITY_FOLDERS[cityIdOrName];
+    }
+    // Tentar pelo nome (case-insensitive)
+    const normalized = cityIdOrName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (CITY_NAME_TO_FOLDER[normalized]) {
+        return CITY_NAME_TO_FOLDER[normalized];
+    }
+    // Tentar match parcial
+    for (const [name, folder] of Object.entries(CITY_NAME_TO_FOLDER)) {
+        if (normalized.includes(name) || name.includes(normalized)) {
+            return folder;
+        }
+    }
+    return null;
+};
+
 // Rota para listar imagens de uma cidade (pública - sem autenticação)
 app.get('/city-images/:cityId', async (c) => {
     const cityId = c.req.param('cityId');
-    const folderName = CITY_FOLDERS[cityId];
+    const folderName = getCityFolder(cityId);
 
     if (!folderName) {
         // Retorna imagem default se cidade não mapeada
@@ -155,6 +188,58 @@ app.get('/city-images/:cityId', async (c) => {
             cityId,
             folder: folderName,
             images: ['/public/cities/default.jpg']
+        });
+    }
+});
+
+// Rota para buscar banners de uma cidade (pública - sem autenticação)
+app.get('/city-banners/:cityId', async (c) => {
+    const cityId = c.req.param('cityId');
+    const folderName = getCityFolder(cityId);
+
+    if (!folderName) {
+        return c.json({
+            cityId,
+            folder: null,
+            banners: []
+        });
+    }
+
+    try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const bannerPath = path.join(process.cwd(), 'public', 'cities', folderName, 'Banner');
+
+        // Verificar se a pasta Banner existe
+        if (!fs.existsSync(bannerPath)) {
+            return c.json({
+                cityId,
+                folder: folderName,
+                banners: []
+            });
+        }
+
+        const files = fs.readdirSync(bannerPath);
+        const imageFiles = files.filter((file: string) =>
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(file)
+        );
+
+        const baseUrl = '/public/cities';
+        const banners = imageFiles.map((file: string) =>
+            `${baseUrl}/${encodeURIComponent(folderName)}/Banner/${encodeURIComponent(file)}`
+        );
+
+        return c.json({
+            cityId,
+            folder: folderName,
+            banners
+        });
+    } catch (error) {
+        console.error('Error reading city banners:', error);
+        return c.json({
+            cityId,
+            folder: folderName,
+            banners: []
         });
     }
 });

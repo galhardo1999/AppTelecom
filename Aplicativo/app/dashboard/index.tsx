@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AdBanner } from '../../src/components/AdBanner';
 import { PromotionalModal } from '../../src/components/PromotionalModal';
 import { useAuth } from '../../src/context/AuthContext';
 import { useContract } from '../../src/context/ContractContext';
@@ -299,26 +300,36 @@ export default function HomeScreen() {
                     </View>
                 )}
 
-                {/* Grid de Ações Rápidas */}
-                <Text className="text-slate-500 text-sm font-medium mb-3 uppercase tracking-wide">Acesso Rápido</Text>
-                <View className="flex-row flex-wrap justify-between mb-4">
+                {/* Ações Rápidas - Círculos em linha */}
+                <Text className="text-slate-800 text-lg font-bold mb-4">Acesso Rápido</Text>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="mb-6"
+                    contentContainerStyle={{ paddingRight: 16 }}
+                >
                     {quickActions.map((action, index) => (
                         <TouchableOpacity
                             key={index}
-                            className="bg-white w-[48%] p-4 rounded-xl shadow-sm mb-3 items-center justify-center border border-slate-100"
+                            className="items-center mr-5"
                             onPress={() => router.push(action.route as any)}
-                            style={{ minHeight: 100 }}
                         >
                             <View
-                                className="w-11 h-11 rounded-full items-center justify-center mb-2"
-                                style={{ backgroundColor: action.color + '15' }}
+                                className="w-16 h-16 rounded-2xl items-center justify-center mb-2 shadow-sm"
+                                style={{ backgroundColor: '#a855f7' }}
                             >
-                                <Ionicons name={action.icon} size={24} color={action.color} />
+                                <Ionicons name={action.icon} size={28} color="white" />
                             </View>
-                            <Text className="text-slate-700 font-semibold text-sm">{action.title}</Text>
+                            <Text className="text-slate-700 font-medium text-xs text-center" style={{ maxWidth: 70 }}>
+                                {action.title}
+                            </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
+
+                {/* Seção Novidades */}
+                <Text className="text-slate-800 text-lg font-bold mb-3">Novidades</Text>
+                <AdBanner cityId={selectedContract?.cidadeId !== '0' ? selectedContract?.cidadeId : selectedContract?.cidade} />
             </ScrollView>
 
             {/* Modal de Seleção de Contrato */}

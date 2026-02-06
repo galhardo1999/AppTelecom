@@ -12,6 +12,8 @@ import { ixcApi } from '../../src/services/api';
 import { Contract } from '../../src/types/ixc';
 import { formatCurrency } from '../../src/utils/formatters';
 
+
+
 export default function PlanoScreen() {
     const { user } = useAuth();
     const { contracts, selectedContract, setSelectedContract, loading } = useContract();

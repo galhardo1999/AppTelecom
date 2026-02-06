@@ -100,6 +100,8 @@ const faqData: FAQItem[] = [
     },
 ];
 
+
+
 export default function SuporteScreen() {
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 

@@ -18,6 +18,8 @@ interface MenuItem {
     isDestructive?: boolean;
 }
 
+
+
 export default function PerfilScreen() {
     const router = useRouter();
     const { user, signOut } = useAuth();
@@ -52,14 +54,6 @@ export default function PerfilScreen() {
     };
 
     const accountItems: MenuItem[] = [
-        {
-            title: 'Meu Contrato',
-            subtitle: 'Visualizar detalhes do contrato',
-            icon: 'document-text-outline',
-            iconColor: '#7c3aed',
-            bgColor: 'bg-purple-100',
-            onPress: () => router.push('/dashboard/contract'),
-        },
         {
             title: 'Meu Plano',
             subtitle: 'Gerenciar planos contratados',

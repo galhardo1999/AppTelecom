@@ -308,9 +308,14 @@ export const ixcService = {
                 const numero = contract.numero || clientData?.numero || '';
                 const bairro = contract.bairro || clientData?.bairro || '';
 
-                // Usar cidade/estado do contrato se disponível, senão do cliente
-                const cidadeId = contract.cidade || clientData?.cidade;
-                const estadoId = contract.estado || clientData?.estado;
+                // Usar cidade/estado do contrato se disponível e válido, senão do cliente
+                // Nota: verificar se não é vazio ou '0' antes de usar
+                const cidadeId = (contract.cidade && contract.cidade !== '0' && contract.cidade !== '')
+                    ? contract.cidade
+                    : clientData?.cidade;
+                const estadoId = (contract.estado && contract.estado !== '0' && contract.estado !== '')
+                    ? contract.estado
+                    : clientData?.estado;
 
                 let cidadeNome = '';
                 let estadoNome = '';
