@@ -8,8 +8,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { serveStatic } from 'hono/bun';
-
+// Tentar carregar serveStatic do Bun apenas em desenvolvimento local
 // Configuração
 import { PORT, ALLOWED_ORIGINS, isDevelopment } from './config/env.js';
 
@@ -34,15 +33,23 @@ type Variables = {
     user: JWTPayload;
 };
 
-const app = new Hono<{ Variables: Variables }>();
+export const app = new Hono<{ Variables: Variables }>();
 
 // ==========================================
 // MIDDLEWARE GLOBAL
 // ==========================================
 
-// Servir arquivos estáticos
-app.use('/image.png', serveStatic({ path: './public/image.png' }));
-app.use('/public/*', serveStatic({ root: './' }));
+// Tentar carregar serveStatic do Bun apenas em desenvolvimento local
+if (isDevelopment) {
+    try {
+        // @ts-ignore - Importação dinâmica para evitar erro de build no Node
+        const { serveStatic } = await import('hono/bun');
+        app.use('/image.png', serveStatic({ path: './public/image.png' }));
+        app.use('/public/*', serveStatic({ root: './' }));
+    } catch (e) {
+        // Ignorar se não estiver no runtime Bun
+    }
+}
 
 // Logger
 app.use('*', logger());
@@ -72,6 +79,15 @@ app.use('*', cors({
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// HSTS (Strict-Transport-Security) para forçar HTTPS
+app.use('*', async (c, next) => {
+    await next();
+    c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('X-Frame-Options', 'DENY');
+    c.header('X-XSS-Protection', '1; mode=block');
+});
 
 // ==========================================
 // LANDING PAGE

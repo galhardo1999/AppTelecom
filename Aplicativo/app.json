@@ -7,12 +7,14 @@
     "icon": "./assets/iconeaplicativo.png",
     "scheme": "apollo-telecom",
     "userInterfaceStyle": "automatic",
+    "jsEngine": "hermes",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.galhardyn.apollotelecom",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "O Apollo Telecom usa o FaceID para permitir o acesso rápido e seguro à sua conta."
       }
     },
     "android": {
@@ -37,6 +39,14 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": false
+          }
         }
       ],
       "expo-font"

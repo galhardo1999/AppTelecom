@@ -2,6 +2,14 @@
     "buildCommand": "npm run build",
     "rewrites": [
         {
+            "source": "/public/(.*)",
+            "destination": "/public/$1"
+        },
+        {
+            "source": "/image.png",
+            "destination": "/public/image.png"
+        },
+        {
             "source": "/(.*)",
             "destination": "/api/index.ts"
         }
