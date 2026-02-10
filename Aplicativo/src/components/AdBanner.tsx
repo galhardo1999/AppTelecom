@@ -29,19 +29,14 @@ export function AdBanner({ cityId }: AdBannerProps) {
 
     // Buscar banners do servidor
     useEffect(() => {
-        console.log('AdBanner: cityId recebido:', cityId);
-
         if (!cityId) {
-            console.log('AdBanner: cityId está vazio, não buscar banners');
             setLoading(false);
             return;
         }
 
         const fetchBanners = async () => {
             try {
-                console.log('AdBanner: Buscando banners para cidade:', cityId);
                 const response = await api.get<BannerResponse>(`/cities/${cityId}/banners`);
-                console.log('AdBanner: Resposta da API:', response.data);
                 setBanners(response.data.banners || []);
             } catch (error) {
                 console.error('Erro ao buscar banners:', error);

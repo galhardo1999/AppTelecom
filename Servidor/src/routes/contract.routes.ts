@@ -80,34 +80,39 @@ contractRoutes.post('/:contractId', withErrorHandler(
 
 /**
  * PUT /api/contracts/:contractId/recurring-card
- * Atualizar contrato com cartão recorrente
+ * Envia dados do cartão direto para o IXC — IXC tokeniza via Cielo internamente
  */
 contractRoutes.put('/:contractId/recurring-card', async (c) => {
     try {
         const contractId = c.req.param('contractId');
         const body = await c.req.json();
 
-        const { token, bandeira } = body;
+        const { cardNumber, holder, expirationDate, securityCode, brand, customerName } = body;
 
         // Validar campos obrigatórios
-        if (!token || !bandeira) {
+        if (!contractId || !cardNumber || !holder || !expirationDate || !securityCode || !brand) {
             return c.json({
-                error: 'Campos obrigatórios: token, bandeira'
+                error: 'Campos obrigatórios: cardNumber, holder, expirationDate, securityCode, brand'
             }, 400);
         }
 
         // Validar bandeira aceita
         const bandeirasValidas = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners'];
-        if (!bandeirasValidas.includes(bandeira.toLowerCase())) {
+        if (!bandeirasValidas.includes(brand.toLowerCase())) {
             return c.json({
                 error: `Bandeira inválida. Aceitas: ${bandeirasValidas.join(', ')}`
             }, 400);
         }
 
-        // Atualizar contrato no IXC
+        // Enviar dados do cartão diretamente para o IXC
+        // O IXC comunica com a Cielo internamente usando as credenciais configuradas
+        console.log('[RECURRING-CARD] Enviando dados do cartão para IXC...');
         const result = await ixcService.updateContractRecurringCard(contractId, {
-            token,
-            bandeira: bandeira.toLowerCase()
+            cardNumber: cardNumber.replace(/\D/g, ''),
+            holder: customerName || holder,
+            expirationDate,
+            securityCode,
+            brand: brand.toLowerCase(),
         });
 
         return c.json({
@@ -118,12 +123,31 @@ contractRoutes.put('/:contractId/recurring-card', async (c) => {
         });
     } catch (error: any) {
         console.error('[RECURRING-CARD] Error:', error.response?.data || error.message);
-        const ixcError = error.response?.data?.message || error.message || 'Erro desconhecido';
+        const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
         return c.json({
             error: 'Erro ao cadastrar cartão recorrente',
-            details: ixcError
+            details: errorMessage
         }, 500);
     }
 });
+
+/**
+ * DELETE /api/contracts/:contractId/recurring-card
+ * Remove o cartão recorrente do contrato
+ */
+contractRoutes.delete('/:contractId/recurring-card', withErrorHandler(
+    async (c) => {
+        const contractId = c.req.param('contractId');
+
+        const result = await ixcService.deleteRecurringCard(contractId);
+
+        return c.json({
+            success: true,
+            message: 'Cartão recorrente removido com sucesso',
+            data: result
+        });
+    },
+    'Erro ao remover cartão recorrente'
+));
 
 export { contractRoutes };

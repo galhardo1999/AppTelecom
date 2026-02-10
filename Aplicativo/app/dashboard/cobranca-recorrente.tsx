@@ -102,8 +102,8 @@ export default function CobrancaRecorrenteScreen() {
     };
 
     /**
-     * Simula tokenização do gateway e envia para o BFF
-     * TODO: integrar com gateway real (PagSeguro, Mercado Pago, etc.)
+     * Envia dados do cartão para o backend, que tokeniza via Cielo 3.0
+     * e atualiza o contrato no IXC
      */
     const handleSubmit = async () => {
         if (!selectedContract) {
@@ -127,14 +127,14 @@ export default function CobrancaRecorrenteScreen() {
         setLoading(true);
 
         try {
-            // TODO: Substituir por integração real com gateway de pagamento
-            // O gateway deve receber os dados do cartão e retornar um token seguro
-            const simulatedToken = `tok_${Date.now()}_${cleanNumber.slice(-4)}`;
-
-            // Enviar token e bandeira para o BFF (que atualiza o contrato no IXC)
+            // Enviar dados do cartão para o backend (Cielo tokeniza no servidor)
             const result = await bffApi.setupRecurringCard(selectedContract.id, {
-                token: simulatedToken,
-                bandeira: bandeira,
+                cardNumber: cleanNumber,
+                holder: nomeTitular,
+                expirationDate: validade,
+                securityCode: cvc,
+                brand: bandeira,
+                customerName: nomeTitular,
             });
 
             if (result.success) {

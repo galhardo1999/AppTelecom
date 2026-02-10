@@ -148,12 +148,21 @@ export const bffApi = {
         }
     },
 
-    // Cadastrar cartão recorrente no contrato
+    // Cadastrar cartão recorrente no contrato (tokenização via Cielo no backend)
     setupRecurringCard: async (contractId: string, cardData: {
-        token: string;
-        bandeira: string;
+        cardNumber: string;
+        holder: string;
+        expirationDate: string;
+        securityCode: string;
+        brand: string;
+        customerName?: string;
     }) => {
         const response = await api.put(`/api/contracts/${contractId}/recurring-card`, cardData);
+        return response.data;
+    },
+
+    deleteRecurringCard: async (contractId: string) => {
+        const response = await api.delete(`/api/contracts/${contractId}/recurring-card`);
         return response.data;
     },
 };

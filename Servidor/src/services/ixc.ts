@@ -299,6 +299,12 @@ export const ixcService = {
 
             const contracts = response.data?.registros || [];
 
+            // Log para debug dos dados do cartão
+            if (contracts.length > 0) {
+                const c = contracts[0];
+                console.log(`[DEBUG] Contrato ${c.id} - Cartão: ${c.credit_card_recorrente_numero_cartao?.substring(0, 4)}... | Carteira: ${c.id_carteira_cobranca}`);
+            }
+
             // Buscar dados do cliente como fallback para endereço
             const clientResponse = await ixcClient.post('/cliente', {
                 qtype: 'cliente.id',
@@ -594,8 +600,11 @@ export const ixcService = {
      * por isso buscamos o contrato completo antes de atualizar.
      */
     updateContractRecurringCard: async (contractId: string, cardData: {
-        token: string;
-        bandeira: string;
+        cardNumber: string;
+        holder: string;
+        expirationDate: string;
+        securityCode: string;
+        brand: string;
     }) => {
         try {
             console.log(`[CONTRACT] Atualizando cartão recorrente para contrato ${contractId}`);
@@ -630,9 +639,7 @@ export const ixcService = {
              */
             const formatDateToIXC = (dateStr: string) => {
                 if (!dateStr) return '';
-                // Se já estiver em DD/MM/YYYY, retorna como está
                 if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) return dateStr;
-                // Tenta converter de YYYY-MM-DD
                 const parts = dateStr.split('-');
                 if (parts.length === 3) {
                     return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -640,49 +647,49 @@ export const ixcService = {
                 return dateStr;
             };
 
-            const formatDateToIXCDash = (dateStr: string) => {
-                if (!dateStr) return '';
-                if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) return dateStr;
-                const parts = dateStr.split('-');
-                if (parts.length === 3) {
-                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-                }
-                return dateStr;
-            };
 
-            const payload = {
-                // === Identificação e Plano ===
-                tipo: currentContract.tipo,
-                id_cliente: currentContract.id_cliente,
-                id_vd_contrato: currentContract.id_vd_contrato,
-                contrato: currentContract.contrato,
-                id_tipo_contrato: currentContract.id_tipo_contrato,
-                id_modelo: currentContract.id_modelo,
-                // === Datas e Filial ===
-                id_filial: currentContract.id_filial,
-                data: formatDateToIXC(currentContract.data),
-                data_cadastro_sistema: formatDateToIXCDash(currentContract.data_cadastro_sistema),
-                // === Financeiro ===
-                id_tipo_documento: currentContract.id_tipo_documento,
-                base_geracao_tipo_doc: currentContract.base_geracao_tipo_doc,
+            // Campos que NÃO devem ser reenviados no PUT (causam validações indesejadas)
+            const camposExcluir = [
+                'id', // ID do registro, não enviar no PUT
+                'motivo_cancelamento', 'data_cancelamento', 'obs_cancelamento',
+                'origem_cancelamento', 'id_responsavel_cancelamento',
+                'motivo_desistencia', 'data_desistencia', 'obs_desistencia',
+                'id_responsavel_desistencia',
+                'data_negativacao', 'protocolo_negativacao', 'id_motivo_negativacao',
+                'obs_negativacao', 'id_responsavel_negativacao',
+                'data_cadastro_sistema', 'ultima_atualizacao',
+                'status', 'status_internet', 'status_velocidade',
+                'situacao_financeira_contrato', 'status_recorrencia',
+                'pago_ate_data', 'num_parcelas_atraso',
+                'dt_ult_bloq_auto', 'dt_ult_bloq_manual', 'dt_ult_desbloq_auto',
+                'dt_ult_desbloq_manual', 'dt_ult_des_bloq_conf', 'dt_ult_ativacao',
+                'dt_ult_finan_atraso', 'dt_utl_negativacao', 'dt_ult_desiste',
+                'dt_ult_liberacao_susp_parc',
+                'data_inicial_suspensao', 'data_final_suspensao', 'data_retomada_contrato',
+                'ativacao_vencimentos',
+            ];
+
+            const payload: Record<string, any> = {
+                // Enviar TODOS os campos do contrato (exceto os problemáticos)
+                ...currentContract,
+
+                // Atualizar carteira de cobrança para Cartão Recorrente (ID 3 - Padrão)
                 id_carteira_cobranca: '3',
-                id_vendedor: currentContract.id_vendedor,
-                cc_previsao: currentContract.cc_previsao,
-                tipo_cobranca: currentContract.tipo_cobranca,
-                renovacao_automatica: 'S',
-                // id_vd_contrato mantido do original (linha acima)
-                agrupar_financeiro_contrato: currentContract.agrupar_financeiro_contrato,
-                // data_cadastro_sistema mantido do original (linha acima)
-                // === Regras de Sistema ===
-                bloqueio_automatico: currentContract.bloqueio_automatico,
-                aviso_atraso: currentContract.aviso_atraso,
-                endereco_padrao_cliente: currentContract.endereco_padrao_cliente,
-                // === Campos de cartão recorrente (novos valores) ===
-                credit_card_recorrente_token: cardData.token,
-                credit_card_recorrente_bandeira_cartao: cardData.bandeira,
+
+                // Sobrescrever APENAS os campos do cartão recorrente
+                credit_card_recorrente_bandeira_cartao: cardData.brand.charAt(0).toUpperCase() + cardData.brand.slice(1),
+                credit_card_recorrente_numero_cartao: cardData.cardNumber,
+                credit_card_recorrente_nome_cartao: cardData.holder,
+                credit_card_recorrente_validade_cartao: cardData.expirationDate,
+                credit_card_recorrente_cvv_cartao: cardData.securityCode,
             };
 
-            console.log('[CONTRACT] Payload PUT:', JSON.stringify(payload, null, 2));
+            // Remover campos problemáticos
+            for (const campo of camposExcluir) {
+                delete payload[campo];
+            }
+
+            console.log('[CONTRACT] Payload Update:', JSON.stringify(payload, null, 2));
 
             const response = await updateClient.put(`/cliente_contrato/${contractId}`, payload);
 
@@ -697,6 +704,93 @@ export const ixcService = {
             return response.data;
         } catch (error: any) {
             console.error('IXC updateContractRecurringCard error:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    /**
+     * Remover cartão recorrente do contrato
+     * Define campos do cartão como vazio e volta carteira para boleto
+     */
+    deleteRecurringCard: async (contractId: string) => {
+        try {
+            console.log(`[CONTRACT] Removendo cartão recorrente do contrato ${contractId}`);
+
+            // 1. Buscar contrato atual
+            const getResponse = await ixcClient.post('/cliente_contrato', {
+                qtype: 'cliente_contrato.id',
+                query: contractId,
+                oper: '=',
+                page: '1',
+                rp: '1'
+            });
+
+            const currentContract = getResponse.data?.registros?.[0];
+            if (!currentContract) {
+                throw new Error(`Contrato ${contractId} não encontrado`);
+            }
+
+            // 2. Montar payload de limpeza
+            const updateClient = axios.create({
+                baseURL: IXC_HOST,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authHeader,
+                    'ixcsoft': 'atualizar',
+                },
+            });
+
+            // Campos para excluir do payload (mesma lista do update)
+            const camposExcluir = [
+                'id',
+                'motivo_cancelamento', 'data_cancelamento', 'obs_cancelamento',
+                'origem_cancelamento', 'id_responsavel_cancelamento',
+                'motivo_desistencia', 'data_desistencia', 'obs_desistencia',
+                'id_responsavel_desistencia',
+                'data_negativacao', 'protocolo_negativacao', 'id_motivo_negativacao',
+                'obs_negativacao', 'id_responsavel_negativacao',
+                'data_cadastro_sistema', 'ultima_atualizacao',
+                'status', 'status_internet', 'status_velocidade',
+                'situacao_financeira_contrato', 'status_recorrencia',
+                'pago_ate_data', 'num_parcelas_atraso',
+                'dt_ult_bloq_auto', 'dt_ult_bloq_manual', 'dt_ult_desbloq_auto',
+                'dt_ult_desbloq_manual', 'dt_ult_des_bloq_conf', 'dt_ult_ativacao',
+                'dt_ult_finan_atraso', 'dt_utl_negativacao', 'dt_ult_desiste',
+                'dt_ult_liberacao_susp_parc',
+                'data_inicial_suspensao', 'data_final_suspensao', 'data_retomada_contrato',
+                'ativacao_vencimentos',
+            ];
+
+            const payload: Record<string, any> = {
+                ...currentContract,
+
+                // Voltar para carteira de cobrança padrão (13 - Boleto/Carteira Padrão)
+                // Se 13 não for o padrão correto para todos, isso pode precisar de ajuste
+                id_carteira_cobranca: '13',
+
+                // Limpar campos do cartão
+                credit_card_recorrente_bandeira_cartao: '',
+                credit_card_recorrente_numero_cartao: '',
+                credit_card_recorrente_nome_cartao: '',
+                credit_card_recorrente_validade_cartao: '',
+                credit_card_recorrente_cvv_cartao: '',
+                credit_card_recorrente_token: '',
+            };
+
+            for (const campo of camposExcluir) {
+                delete payload[campo];
+            }
+
+            const response = await updateClient.put(`/cliente_contrato/${contractId}`, payload);
+
+            if (response.data.type !== 'success') {
+                console.error('[CONTRACT] Erro IXC ao excluir cartão:', response.data);
+                throw new Error(JSON.stringify({ ...response.data, payload_sent: payload }));
+            }
+
+            return response.data;
+        } catch (error: any) {
+            console.error('IXC deleteRecurringCard error:', error.response?.data || error.message);
             throw error;
         }
     }
