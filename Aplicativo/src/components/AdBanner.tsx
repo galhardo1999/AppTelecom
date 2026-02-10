@@ -40,7 +40,7 @@ export function AdBanner({ cityId }: AdBannerProps) {
         const fetchBanners = async () => {
             try {
                 console.log('AdBanner: Buscando banners para cidade:', cityId);
-                const response = await api.get<BannerResponse>(`/city-banners/${cityId}`);
+                const response = await api.get<BannerResponse>(`/cities/${cityId}/banners`);
                 console.log('AdBanner: Resposta da API:', response.data);
                 setBanners(response.data.banners || []);
             } catch (error) {

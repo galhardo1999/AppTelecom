@@ -147,6 +147,15 @@ export const bffApi = {
             return null;
         }
     },
+
+    // Cadastrar cartão recorrente no contrato
+    setupRecurringCard: async (contractId: string, cardData: {
+        token: string;
+        bandeira: string;
+    }) => {
+        const response = await api.put(`/api/contracts/${contractId}/recurring-card`, cardData);
+        return response.data;
+    },
 };
 
 // Export legado para compatibilidade

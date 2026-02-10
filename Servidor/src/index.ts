@@ -76,7 +76,7 @@ app.use('*', cors({
         // Bloquear origens não autorizadas
         return null;
     },
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }));
 

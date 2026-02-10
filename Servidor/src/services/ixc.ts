@@ -97,11 +97,17 @@ export const ixcService = {
     },
 
     /**
-     * Validate password using MD5 (IXC standard)
+     * Validate password using MD5 (IXC standard) com fallback para texto plano
+     * Alguns clientes no IXC possuem a senha armazenada em texto plano ao invés de MD5
      */
-    validatePassword: (inputPassword: string, storedHash: string): boolean => {
+    validatePassword: (inputPassword: string, storedPassword: string): boolean => {
+        // Tentar comparação por hash MD5 (padrão IXC)
         const inputHash = CryptoJS.MD5(inputPassword).toString();
-        return inputHash === storedHash;
+        if (inputHash === storedPassword) {
+            return true;
+        }
+        // Fallback: comparação direta (senha armazenada em texto plano)
+        return inputPassword === storedPassword;
     },
 
     /**
@@ -575,6 +581,122 @@ export const ixcService = {
             return null;
         } catch (error) {
             console.error('IXC getContractPdf error:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Atualizar contrato com dados de cartão recorrente
+     * PUT /cliente_contrato/{id} com token e bandeira do cartão
+     * Também altera o id_carteira_cobranca para 3 (carteira recorrente)
+     * 
+     * Nota: O IXC exige que todos os campos obrigatórios sejam enviados no PUT,
+     * por isso buscamos o contrato completo antes de atualizar.
+     */
+    updateContractRecurringCard: async (contractId: string, cardData: {
+        token: string;
+        bandeira: string;
+    }) => {
+        try {
+            console.log(`[CONTRACT] Atualizando cartão recorrente para contrato ${contractId}`);
+
+            // 1. Buscar contrato atual para obter todos os campos obrigatórios
+            const getResponse = await ixcClient.post('/cliente_contrato', {
+                qtype: 'cliente_contrato.id',
+                query: contractId,
+                oper: '=',
+                page: '1',
+                rp: '1'
+            });
+
+            const currentContract = getResponse.data?.registros?.[0];
+            if (!currentContract) {
+                throw new Error(`Contrato ${contractId} não encontrado`);
+            }
+
+            // 2. Montar payload com dados existentes + novos campos de cartão
+            const updateClient = axios.create({
+                baseURL: IXC_HOST,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authHeader,
+                    'ixcsoft': 'atualizar',
+                },
+            });
+
+
+            /**
+             * Helper para formatar data YYYY-MM-DD para DD/MM/YYYY (formato IXC)
+             */
+            const formatDateToIXC = (dateStr: string) => {
+                if (!dateStr) return '';
+                // Se já estiver em DD/MM/YYYY, retorna como está
+                if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) return dateStr;
+                // Tenta converter de YYYY-MM-DD
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+                return dateStr;
+            };
+
+            const formatDateToIXCDash = (dateStr: string) => {
+                if (!dateStr) return '';
+                if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) return dateStr;
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+                return dateStr;
+            };
+
+            const payload = {
+                // === Identificação e Plano ===
+                tipo: currentContract.tipo,
+                id_cliente: currentContract.id_cliente,
+                id_vd_contrato: currentContract.id_vd_contrato,
+                contrato: currentContract.contrato,
+                id_tipo_contrato: currentContract.id_tipo_contrato,
+                id_modelo: currentContract.id_modelo,
+                // === Datas e Filial ===
+                id_filial: currentContract.id_filial,
+                data: formatDateToIXC(currentContract.data),
+                data_cadastro_sistema: formatDateToIXCDash(currentContract.data_cadastro_sistema),
+                // === Financeiro ===
+                id_tipo_documento: currentContract.id_tipo_documento,
+                base_geracao_tipo_doc: currentContract.base_geracao_tipo_doc,
+                id_carteira_cobranca: '3',
+                id_vendedor: currentContract.id_vendedor,
+                cc_previsao: currentContract.cc_previsao,
+                tipo_cobranca: currentContract.tipo_cobranca,
+                renovacao_automatica: 'S',
+                // id_vd_contrato mantido do original (linha acima)
+                agrupar_financeiro_contrato: currentContract.agrupar_financeiro_contrato,
+                // data_cadastro_sistema mantido do original (linha acima)
+                // === Regras de Sistema ===
+                bloqueio_automatico: currentContract.bloqueio_automatico,
+                aviso_atraso: currentContract.aviso_atraso,
+                endereco_padrao_cliente: currentContract.endereco_padrao_cliente,
+                // === Campos de cartão recorrente (novos valores) ===
+                credit_card_recorrente_token: cardData.token,
+                credit_card_recorrente_bandeira_cartao: cardData.bandeira,
+            };
+
+            console.log('[CONTRACT] Payload PUT:', JSON.stringify(payload, null, 2));
+
+            const response = await updateClient.put(`/cliente_contrato/${contractId}`, payload);
+
+            console.log('[CONTRACT] Resposta IXC:', JSON.stringify(response.data));
+
+            // Verificar se a resposta indica erro
+            if (response.data.type !== 'success') {
+                console.error('[CONTRACT] Erro IXC:', response.data);
+                throw new Error(JSON.stringify({ ...response.data, payload_sent: payload }));
+            }
+
+            return response.data;
+        } catch (error: any) {
+            console.error('IXC updateContractRecurringCard error:', error.response?.data || error.message);
             throw error;
         }
     }

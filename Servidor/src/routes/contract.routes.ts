@@ -78,4 +78,52 @@ contractRoutes.post('/:contractId', withErrorHandler(
     'Erro ao buscar contrato'
 ));
 
+/**
+ * PUT /api/contracts/:contractId/recurring-card
+ * Atualizar contrato com cartão recorrente
+ */
+contractRoutes.put('/:contractId/recurring-card', async (c) => {
+    try {
+        const contractId = c.req.param('contractId');
+        const body = await c.req.json();
+
+        const { token, bandeira } = body;
+
+        // Validar campos obrigatórios
+        if (!token || !bandeira) {
+            return c.json({
+                error: 'Campos obrigatórios: token, bandeira'
+            }, 400);
+        }
+
+        // Validar bandeira aceita
+        const bandeirasValidas = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners'];
+        if (!bandeirasValidas.includes(bandeira.toLowerCase())) {
+            return c.json({
+                error: `Bandeira inválida. Aceitas: ${bandeirasValidas.join(', ')}`
+            }, 400);
+        }
+
+        // Atualizar contrato no IXC
+        const result = await ixcService.updateContractRecurringCard(contractId, {
+            token,
+            bandeira: bandeira.toLowerCase()
+        });
+
+        return c.json({
+            success: true,
+            message: 'Cartão recorrente cadastrado com sucesso',
+            contractId,
+            data: result
+        });
+    } catch (error: any) {
+        console.error('[RECURRING-CARD] Error:', error.response?.data || error.message);
+        const ixcError = error.response?.data?.message || error.message || 'Erro desconhecido';
+        return c.json({
+            error: 'Erro ao cadastrar cartão recorrente',
+            details: ixcError
+        }, 500);
+    }
+});
+
 export { contractRoutes };
