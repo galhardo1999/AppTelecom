@@ -605,6 +605,7 @@ export const ixcService = {
         expirationDate: string;
         securityCode: string;
         brand: string;
+        token: string;
     }) => {
         try {
             console.log(`[CONTRACT] Atualizando cartão recorrente para contrato ${contractId}`);
@@ -681,7 +682,8 @@ export const ixcService = {
                 credit_card_recorrente_numero_cartao: cardData.cardNumber,
                 credit_card_recorrente_nome_cartao: cardData.holder,
                 credit_card_recorrente_validade_cartao: cardData.expirationDate,
-                credit_card_recorrente_cvv_cartao: cardData.securityCode,
+                // credit_card_recorrente_cvv_cartao: cardData.securityCode, // CVV generally shouldn't be stored if token is used, but IXC might require it. Keeping it for compatibility if needed, but token is priority.
+                credit_card_recorrente_token: cardData.token, // Adding the token here
             };
 
             // Remover campos problemáticos

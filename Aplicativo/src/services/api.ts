@@ -157,7 +157,9 @@ export const bffApi = {
         brand: string;
         customerName?: string;
     }) => {
+        console.log('[BFF API] Enviando requisição para setupRecurringCard:', { contractId, ...cardData });
         const response = await api.put(`/api/contracts/${contractId}/recurring-card`, cardData);
+        console.log('[BFF API] Resposta de setupRecurringCard:', response.data);
         return response.data;
     },
 

@@ -127,15 +127,21 @@ export default function CobrancaRecorrenteCadastroScreen() {
         setLoading(true);
 
         try {
-            // Enviar dados do cartão para o backend (Cielo tokeniza no servidor)
-            const result = await bffApi.setupRecurringCard(selectedContract.id, {
+            const cardData = {
                 cardNumber: cleanNumber,
                 holder: nomeTitular,
                 expirationDate: validade,
                 securityCode: cvc,
                 brand: bandeira,
                 customerName: nomeTitular,
-            });
+            };
+
+            console.log('Dados do cartão a serem enviados:', cardData);
+
+            // Enviar dados do cartão para o backend (Cielo tokeniza no servidor)
+            const result = await bffApi.setupRecurringCard(selectedContract.id, cardData);
+
+            console.log('Resultado da API:', result);
 
             if (result.success) {
                 await refreshContracts();
@@ -184,7 +190,7 @@ export default function CobrancaRecorrenteCadastroScreen() {
                         {/* Cartão Preview - Visual Premium */}
                         <View className="items-center mb-8 mt-2">
                             <LinearGradient
-                                colors={brandInfo.gradient}
+                                colors={brandInfo.gradient as [string, string, ...string[]]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 className="w-full h-56 rounded-2xl p-6 justify-between shadow-2xl"

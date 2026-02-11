@@ -4,6 +4,7 @@
 
 import { Hono } from 'hono';
 import { ixcService } from '../services/ixc.js';
+import { cieloService } from '../services/cielo.js';
 import { withErrorHandler } from '../middleware/errorHandler.js';
 import { cached } from '../services/cache.js';
 import type { JWTPayload } from '../types/index.js';
@@ -104,8 +105,26 @@ contractRoutes.put('/:contractId/recurring-card', async (c) => {
             }, 400);
         }
 
-        // Enviar dados do cartão diretamente para o IXC
-        // O IXC comunica com a Cielo internamente usando as credenciais configuradas
+        // 1. Tokenizar cartão na Cielo (com retry)
+        console.log('[RECURRING-CARD] Tokenizando cartão na Cielo...');
+        const cardToken = await cieloService.tokenizeCardWithRetry({
+            customerName: customerName || holder,
+            cardNumber: cardNumber,
+            holder: holder,
+            expirationDate: expirationDate,
+            brand: brand,
+            securityCode: securityCode,
+        });
+
+        console.log('[RECURRING-CARD] Token gerado:', cardToken);
+
+        // 1.1 Validar se o token está ativo/acessível
+        const isTokenValid = await cieloService.validateToken(cardToken);
+        if (!isTokenValid) {
+            throw new Error('Token gerado não pôde ser validado na Cielo');
+        }
+
+        // 2. Enviar dados do cartão + token para o IXC
         console.log('[RECURRING-CARD] Enviando dados do cartão para IXC...');
         const result = await ixcService.updateContractRecurringCard(contractId, {
             cardNumber: cardNumber.replace(/\D/g, ''),
@@ -113,6 +132,7 @@ contractRoutes.put('/:contractId/recurring-card', async (c) => {
             expirationDate,
             securityCode,
             brand: brand.toLowerCase(),
+            token: cardToken,
         });
 
         return c.json({
@@ -123,7 +143,17 @@ contractRoutes.put('/:contractId/recurring-card', async (c) => {
         });
     } catch (error: any) {
         console.error('[RECURRING-CARD] Error:', error.response?.data || error.message);
-        const errorMessage = error.response?.data?.message || error.message || 'Erro desconhecido';
+
+        const errorMessage = error.message || 'Erro desconhecido';
+
+        // Se for erro de validação da Cielo, retornar 400
+        if (errorMessage.includes('Erro Cielo') || errorMessage.includes('Credenciais da Cielo')) {
+            return c.json({
+                error: 'Erro na validação do cartão',
+                details: errorMessage.replace('Erro Cielo: ', '')
+            }, 400);
+        }
+
         return c.json({
             error: 'Erro ao cadastrar cartão recorrente',
             details: errorMessage
