@@ -48,6 +48,12 @@ export interface Contract {
     // Extras
     renovacao_automatica?: string;
     contrato_pdf?: string;
+
+    // Cartão Recorrente
+    credit_card_recorrente_numero_cartao?: string;
+    credit_card_recorrente_nome_cartao?: string;
+    credit_card_recorrente_validade_cartao?: string;
+    credit_card_recorrente_bandeira_cartao?: string;
 }
 
 export interface RadUsuario {

@@ -6,11 +6,8 @@ import {
     ActivityIndicator,
     Alert,
     Dimensions,
-    KeyboardAvoidingView,
-    Platform,
     ScrollView,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -19,20 +16,6 @@ import { useContract } from '../../src/context/ContractContext';
 import { bffApi } from '../../src/services/api';
 
 const { width } = Dimensions.get('window');
-
-/**
- * Detecta a bandeira do cartão pelo número (primeiros dígitos)
- */
-function detectCardBrand(number: string): string {
-    const clean = number.replace(/\D/g, '');
-    if (/^4/.test(clean)) return 'visa';
-    if (/^5[1-5]/.test(clean) || /^2[2-7]/.test(clean)) return 'mastercard';
-    if (/^(636368|438935|504175|451416|636297|5067|4576|4011|506699)/.test(clean)) return 'elo';
-    if (/^3[47]/.test(clean)) return 'amex';
-    if (/^(606282|3841)/.test(clean)) return 'hipercard';
-    if (/^3(?:0[0-5]|[68])/.test(clean)) return 'diners';
-    return '';
-}
 
 /**
  * Retorna o ícone e cor da bandeira
@@ -47,34 +30,9 @@ function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; co
     }
 }
 
-/**
- * Aplica máscara no número do cartão: XXXX XXXX XXXX XXXX
- */
-function maskCardNumber(value: string): string {
-    const clean = value.replace(/\D/g, '').slice(0, 16);
-    const groups = clean.match(/.{1,4}/g);
-    return groups ? groups.join(' ') : clean;
-}
-
-/**
- * Aplica máscara na validade: MM/AA
- */
-function maskExpiry(value: string): string {
-    const clean = value.replace(/\D/g, '').slice(0, 4);
-    if (clean.length >= 3) {
-        return `${clean.slice(0, 2)}/${clean.slice(2)}`;
-    }
-    return clean;
-}
-
 export default function CobrancaRecorrenteScreen() {
     const router = useRouter();
-    const { selectedContract } = useContract();
-
-    const [nomeTitular, setNomeTitular] = useState('');
-    const [numeroCartao, setNumeroCartao] = useState('');
-    const [validade, setValidade] = useState('');
-    const [cvc, setCvc] = useState('');
+    const { selectedContract, refreshContracts } = useContract();
     const [loading, setLoading] = useState(false);
 
     // State for saved card
@@ -89,7 +47,7 @@ export default function CobrancaRecorrenteScreen() {
     React.useEffect(() => {
         if (selectedContract?.credit_card_recorrente_numero_cartao) {
             const num = selectedContract.credit_card_recorrente_numero_cartao;
-            const brand = selectedContract.credit_card_recorrente_bandeira_cartao?.toLowerCase() || detectCardBrand(num);
+            const brand = selectedContract.credit_card_recorrente_bandeira_cartao?.toLowerCase() || 'mastercard';
             const last4 = num.length > 4 ? num.slice(-4) : num;
 
             setSavedCard({
@@ -102,84 +60,6 @@ export default function CobrancaRecorrenteScreen() {
             setSavedCard(null);
         }
     }, [selectedContract]);
-
-    // Detectar bandeira automaticamente (para novo cartão)
-    const cleanNumber = numeroCartao.replace(/\D/g, '');
-    const bandeira = detectCardBrand(cleanNumber);
-    const brandInfo = savedCard ? getBrandInfo(savedCard.brand) : getBrandInfo(bandeira);
-
-    // Validação do formulário
-    const isFormValid =
-        nomeTitular.trim().length >= 3 &&
-        cleanNumber.length >= 15 &&
-        validade.length === 5 &&
-        cvc.length >= 3 &&
-        bandeira !== '';
-
-    const handleCardNumberChange = (text: string) => {
-        setNumeroCartao(maskCardNumber(text));
-    };
-
-    const handleExpiryChange = (text: string) => {
-        setValidade(maskExpiry(text));
-    };
-
-    const handleCvcChange = (text: string) => {
-        setCvc(text.replace(/\D/g, '').slice(0, 4));
-    };
-
-    /**
-     * Envia dados do cartão para o backend
-     */
-    const handleSubmit = async () => {
-        if (!selectedContract) {
-            Alert.alert('Erro', 'Nenhum contrato selecionado');
-            return;
-        }
-
-        if (!isFormValid) {
-            Alert.alert('Atenção', 'Preencha todos os campos corretamente');
-            return;
-        }
-
-        // Validar validade MM/AA
-        const [mm, aa] = validade.split('/');
-        const mesNum = parseInt(mm, 10);
-        if (mesNum < 1 || mesNum > 12) {
-            Alert.alert('Atenção', 'Mês de validade inválido');
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            // Enviar dados do cartão para o backend (Cielo tokeniza no servidor)
-            const result = await bffApi.setupRecurringCard(selectedContract.id, {
-                cardNumber: cleanNumber,
-                holder: nomeTitular,
-                expirationDate: validade,
-                securityCode: cvc,
-                brand: bandeira,
-                customerName: nomeTitular,
-            });
-
-            if (result.success) {
-                Alert.alert(
-                    '✅ Sucesso!',
-                    'Cobrança recorrente ativada. Suas faturas serão debitadas automaticamente.',
-                    [{ text: 'OK', onPress: () => router.back() }]
-                );
-            } else {
-                Alert.alert('Erro', result.message || 'Erro ao cadastrar cartão');
-            }
-        } catch (error: any) {
-            console.error('Erro ao cadastrar cartão:', error);
-            const errorMessage = error.response?.data?.error || 'Não foi possível cadastrar o cartão. Tente novamente.';
-            Alert.alert('Erro', errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleRemoveCard = async () => {
         Alert.alert(
@@ -195,6 +75,7 @@ export default function CobrancaRecorrenteScreen() {
                         setLoading(true);
                         try {
                             await bffApi.deleteRecurringCard(selectedContract.id);
+                            await refreshContracts();
                             setSavedCard(null);
                             Alert.alert('Sucesso', 'Cartão removido com sucesso.');
                         } catch (error) {
@@ -223,25 +104,40 @@ export default function CobrancaRecorrenteScreen() {
                     <View className="w-10" />
                 </View>
 
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    className="flex-1"
+                <ScrollView
+                    className="flex-1 px-6 pt-2"
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 40 }}
                 >
-                    <ScrollView
-                        className="flex-1 px-6 pt-2"
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 40 }}
-                    >
+                    {/* Status Section */}
+                    <View className="items-center mb-8 mt-6">
+                        <View className={`w-20 h-20 rounded-full items-center justify-center mb-4 ${savedCard ? 'bg-green-100' : 'bg-slate-100'}`}>
+                            <Ionicons
+                                name={savedCard ? "checkmark-circle" : "alert-circle"}
+                                size={40}
+                                color={savedCard ? "#16a34a" : "#94a3b8"}
+                            />
+                        </View>
+                        <Text className="text-slate-800 font-bold text-2xl text-center mb-1">
+                            {savedCard ? 'Recorrência Ativa' : 'Recorrência Inativa'}
+                        </Text>
+                        <Text className="text-slate-500 text-center leading-5 max-w-[80%]">
+                            {savedCard
+                                ? 'Seu cartão está configurado e suas faturas serão debitadas automaticamente.'
+                                : 'Cadastre seu cartão de crédito para pagar suas faturas automaticamente.'}
+                        </Text>
+                    </View>
 
-                        {/* Cartão Preview - Visual Premium */}
-                        <View className="items-center mb-8 mt-2">
+                    {/* Saved Card Preview */}
+                    {savedCard && (
+                        <View className="items-center mb-8">
                             <LinearGradient
-                                colors={brandInfo.gradient}
+                                colors={savedCard ? getBrandInfo(savedCard.brand).gradient : ['#334155', '#1e293b']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 1 }}
                                 className="w-full h-56 rounded-2xl p-6 justify-between shadow-2xl"
                                 style={{
-                                    shadowColor: brandInfo.gradient[0],
+                                    shadowColor: savedCard ? getBrandInfo(savedCard.brand).gradient[0] : '#000',
                                     shadowOffset: { width: 0, height: 10 },
                                     shadowOpacity: 0.3,
                                     shadowRadius: 20,
@@ -253,7 +149,7 @@ export default function CobrancaRecorrenteScreen() {
                                         <Ionicons name="wifi" size={24} color="rgba(255,255,255,0.8)" style={{ transform: [{ rotate: '90deg' }] }} />
                                     </View>
                                     <Text className="text-white font-bold text-lg italic opacity-90">
-                                        {brandInfo.label}
+                                        {getBrandInfo(savedCard.brand).label}
                                     </Text>
                                 </View>
 
@@ -262,9 +158,7 @@ export default function CobrancaRecorrenteScreen() {
                                         <View className="w-12 h-9 bg-yellow-400/20 rounded-md border border-yellow-200/30" />
                                     </View>
                                     <Text className="text-white text-2xl font-mono tracking-widest shadow-sm">
-                                        {savedCard
-                                            ? `•••• •••• •••• ${savedCard.last4}`
-                                            : (cleanNumber.length > 0 ? maskCardNumber(cleanNumber) : '•••• •••• •••• ••••')}
+                                        {`•••• •••• •••• ${savedCard.last4}`}
                                     </Text>
                                 </View>
 
@@ -272,153 +166,68 @@ export default function CobrancaRecorrenteScreen() {
                                     <View>
                                         <Text className="text-white/60 text-[10px] uppercase font-bold tracking-wider mb-1">Titular</Text>
                                         <Text className="text-white font-medium tracking-wide uppercase shadow-sm">
-                                            {savedCard ? savedCard.holder : (nomeTitular || 'NOME DO TITULAR')}
+                                            {savedCard.holder}
                                         </Text>
                                     </View>
                                     <View>
                                         <Text className="text-white/60 text-[10px] uppercase font-bold tracking-wider mb-1">Validade</Text>
                                         <Text className="text-white font-medium tracking-wide shadow-sm">
-                                            {savedCard ? savedCard.expiry : (validade || 'MM/AA')}
+                                            {savedCard.expiry}
                                         </Text>
                                     </View>
                                 </View>
                             </LinearGradient>
+
+                            <TouchableOpacity
+                                onPress={handleRemoveCard}
+                                className="mt-8 bg-red-50 py-4 w-full rounded-xl items-center flex-row justify-center border border-red-100"
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#ef4444" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="trash-outline" size={20} color="#ef4444" className="mr-2" />
+                                        <Text className="text-red-500 font-bold text-lg">Remover Cartão</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
                         </View>
+                    )}
 
-                        {/* Se tem cartão salvo, mostra botão de remover, senão mostra formulário */}
-                        {savedCard ? (
-                            <View className="space-y-4">
-                                <View className="bg-white p-6 rounded-2xl border border-slate-100 items-center">
-                                    <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-4">
-                                        <Ionicons name="checkmark-circle" size={32} color="#16a34a" />
-                                    </View>
-                                    <Text className="text-slate-800 font-bold text-xl text-center mb-2">Cartão Configurado</Text>
-                                    <Text className="text-slate-500 text-center leading-5">
-                                        Este cartão será utilizado para pagar suas faturas automaticamente no dia do vencimento.
-                                    </Text>
-                                </View>
+                    {/* Action Button */}
+                    {!savedCard && (
+                        <TouchableOpacity
+                            onPress={() => router.push('/dashboard/cobranca-recorrente-cadastro' as any)}
+                            activeOpacity={0.8}
+                            className="shadow-lg shadow-purple-200"
+                        >
+                            <LinearGradient
+                                colors={['#a855f7', '#7e22ce']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                className="py-4 rounded-xl items-center flex-row justify-center"
+                            >
+                                <Ionicons name="add-circle-outline" size={24} color="white" className="mr-2" />
+                                <Text className="text-white font-bold text-lg">Cadastrar Cartão</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    )}
 
-                                <TouchableOpacity
-                                    onPress={handleRemoveCard}
-                                    className="bg-red-50 py-4 rounded-xl items-center flex-row justify-center border border-red-100"
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#ef4444" />
-                                    ) : (
-                                        <>
-                                            <Ionicons name="trash-outline" size={20} color="#ef4444" className="mr-2" />
-                                            <Text className="text-red-500 font-bold text-lg">Remover Cartão</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
+                    {/* Info Section */}
+                    {!savedCard && (
+                        <View className="mt-8 bg-blue-50 p-6 rounded-2xl">
+                            <View className="flex-row items-center mb-2">
+                                <Ionicons name="shield-checkmark" size={24} color="#3b82f6" className="mr-2" />
+                                <Text className="text-blue-800 font-bold text-lg">É seguro?</Text>
                             </View>
-                        ) : (
-                            /* Formulário Clean */
-                            <View className="space-y-5">
-                                <View>
-                                    <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-2 ml-1">Dados do Cartão</Text>
+                            <Text className="text-blue-700/80 leading-6">
+                                Sim! Seus dados são processados diretamente pela Cielo e tokenizados. Nós não armazenamos o número do seu cartão.
+                            </Text>
+                        </View>
+                    )}
 
-                                    <View className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                        {/* Número */}
-                                        <View className="flex-row items-center px-4 py-4 border-b border-slate-100">
-                                            <Ionicons name="card-outline" size={22} color="#94a3b8" />
-                                            <TextInput
-                                                className="flex-1 ml-3 text-slate-800 font-medium text-base"
-                                                placeholder="Número do Cartão"
-                                                placeholderTextColor="#cbd5e1"
-                                                keyboardType="numeric"
-                                                value={numeroCartao}
-                                                onChangeText={handleCardNumberChange}
-                                                maxLength={19}
-                                            />
-                                            {bandeira !== '' && (
-                                                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-                                            )}
-                                        </View>
-
-                                        {/* Nome */}
-                                        <View className="flex-row items-center px-4 py-4 border-b border-slate-100">
-                                            <Ionicons name="person-outline" size={22} color="#94a3b8" />
-                                            <TextInput
-                                                className="flex-1 ml-3 text-slate-800 font-medium text-base"
-                                                placeholder="Nome impresso no cartão"
-                                                placeholderTextColor="#cbd5e1"
-                                                autoCapitalize="characters"
-                                                value={nomeTitular}
-                                                onChangeText={setNomeTitular}
-                                            />
-                                        </View>
-
-                                        {/* Validade e CVV */}
-                                        <View className="flex-row">
-                                            <View className="flex-1 flex-row items-center px-4 py-4 border-r border-slate-100">
-                                                <Ionicons name="calendar-outline" size={22} color="#94a3b8" />
-                                                <TextInput
-                                                    className="flex-1 ml-3 text-slate-800 font-medium text-base"
-                                                    placeholder="MM/AA"
-                                                    placeholderTextColor="#cbd5e1"
-                                                    keyboardType="numeric"
-                                                    value={validade}
-                                                    onChangeText={handleExpiryChange}
-                                                    maxLength={5}
-                                                />
-                                            </View>
-                                            <View className="flex-1 flex-row items-center px-4 py-4">
-                                                <Ionicons name="lock-closed-outline" size={22} color="#94a3b8" />
-                                                <TextInput
-                                                    className="flex-1 ml-3 text-slate-800 font-medium text-base"
-                                                    placeholder="CVV"
-                                                    placeholderTextColor="#cbd5e1"
-                                                    keyboardType="numeric"
-                                                    secureTextEntry
-                                                    value={cvc}
-                                                    onChangeText={handleCvcChange}
-                                                    maxLength={4}
-                                                />
-                                            </View>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Informações de Segurança */}
-                                <View className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 flex-row gap-3">
-                                    <Ionicons name="shield-checkmark" size={20} color="#3b82f6" />
-                                    <View className="flex-1">
-                                        <Text className="text-blue-900 font-semibold text-sm mb-0.5">Pagamento Seguro</Text>
-                                        <Text className="text-blue-700/70 text-xs leading-4">
-                                            Seus dados são criptografados e processados diretamente pela Cielo. Não armazenamos o número completo do seu cartão.
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                {/* Botão Salvar */}
-                                <TouchableOpacity
-                                    onPress={handleSubmit}
-                                    disabled={!isFormValid || loading}
-                                    activeOpacity={0.8}
-                                    className="mt-4 shadow-lg shadow-purple-200"
-                                >
-                                    <LinearGradient
-                                        colors={!isFormValid ? ['#cbd5e1', '#94a3b8'] : ['#a855f7', '#7e22ce']}
-                                        start={{ x: 0, y: 0 }}
-                                        end={{ x: 1, y: 0 }}
-                                        className="py-4 rounded-xl items-center flex-row justify-center"
-                                    >
-                                        {loading ? (
-                                            <ActivityIndicator color="white" />
-                                        ) : (
-                                            <>
-                                                <Text className="text-white font-bold text-lg mr-2">Ativar Recorrência</Text>
-                                                <Ionicons name="arrow-forward" size={20} color="white" />
-                                            </>
-                                        )}
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </ScrollView>
-                </KeyboardAvoidingView>
+                </ScrollView>
             </SafeAreaView>
         </View>
     );

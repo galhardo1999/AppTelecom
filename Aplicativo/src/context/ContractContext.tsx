@@ -11,6 +11,7 @@ interface ContractContextType {
     loading: boolean;
     hasUserSelectedContract: boolean; // Indica se usuário já escolheu contrato nesta sessão
     setHasUserSelectedContract: (value: boolean) => void;
+    refreshContracts: () => Promise<void>;
 }
 
 const ContractContext = createContext<ContractContextType | undefined>(undefined);
@@ -75,6 +76,29 @@ export function ContractProvider({ children }: { children: ReactNode }) {
                 loading,
                 hasUserSelectedContract,
                 setHasUserSelectedContract,
+                refreshContracts: async () => {
+                    if (user?.id) {
+                        setLoading(true);
+                        try {
+                            const response = await ixcApi.getClientContracts(user.id);
+                            const contractsList = Array.isArray(response) ? response : [];
+                            setContracts(contractsList);
+
+                            // Manter contrato selecionado atualizado se existir na nova lista
+                            if (selectedContract) {
+                                const updated = contractsList.find((c: Contract) => c.id === selectedContract.id);
+                                if (updated) setSelectedContractState(updated);
+                            } else if (contractsList.length > 0) {
+                                const activeContract = contractsList.find((c: Contract) => c.status === 'A') || contractsList[0];
+                                setSelectedContractState(activeContract || null);
+                            }
+                        } catch (error) {
+                            console.error('Error refreshing contracts:', error);
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
             }}
         >
             {children}
