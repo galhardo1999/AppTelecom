@@ -51,7 +51,6 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
-      <Stack.Screen name="cobranca-recorrente" />
     </Stack>
   );
 }
