@@ -20,7 +20,7 @@ const { width } = Dimensions.get('window');
 /**
  * Retorna o ícone e cor da bandeira
  */
-function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; gradient: string[] } {
+function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; gradient: readonly [string, string, ...string[]] } {
     switch (brand) {
         case 'visa': return { icon: 'card', color: '#1A1F71', label: 'Visa', gradient: ['#1a1f71', '#283593'] };
         case 'mastercard': return { icon: 'card', color: '#EB001B', label: 'Mastercard', gradient: ['#eb001b', '#f79e1b'] };
@@ -95,7 +95,7 @@ export default function CobrancaRecorrenteScreen() {
                 {/* Header Simples */}
                 <View className="px-6 py-4 flex-row items-center justify-between">
                     <TouchableOpacity
-                        onPress={() => router.back()}
+                        onPress={() => router.navigate('/dashboard/perfil')}
                         className="w-10 h-10 bg-white rounded-full items-center justify-center shadow-sm border border-slate-100"
                     >
                         <Ionicons name="arrow-back" size={24} color="#334155" />
@@ -198,7 +198,7 @@ export default function CobrancaRecorrenteScreen() {
                     {/* Action Button */}
                     {!savedCard && (
                         <TouchableOpacity
-                            onPress={() => router.push('/dashboard/cobranca-recorrente-cadastro' as any)}
+                            onPress={() => router.push('/recorrencia/cadastro' as any)}
                             activeOpacity={0.8}
                             className="shadow-lg shadow-purple-200"
                         >

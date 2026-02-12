@@ -21,19 +21,10 @@ export default function DashboardLayout() {
             <MaterialTopTabs.Screen name="faturas" />
             <MaterialTopTabs.Screen name="index" />
             <MaterialTopTabs.Screen name="suporte" />
-            <MaterialTopTabs.Screen name="perfil" />
             <MaterialTopTabs.Screen
-                name="cobranca-recorrente"
+                name="perfil"
                 options={{
-                    tabBarItemStyle: { display: 'none' },
-                    swipeEnabled: false,
-                }}
-            />
-            <MaterialTopTabs.Screen
-                name="cobranca-recorrente-cadastro"
-                options={{
-                    tabBarItemStyle: { display: 'none' },
-                    swipeEnabled: false,
+                    swipeEnabled: true,
                 }}
             />
         </MaterialTopTabs>

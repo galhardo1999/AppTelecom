@@ -68,7 +68,7 @@ export default function PerfilScreen() {
             icon: 'card-outline',
             iconColor: '#7c3aed',
             bgColor: 'bg-purple-100',
-            onPress: () => router.push('/dashboard/cobranca-recorrente' as any),
+            onPress: () => router.push('/recorrencia' as any),
         },
     ];
 

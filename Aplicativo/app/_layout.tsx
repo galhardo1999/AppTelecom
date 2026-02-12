@@ -19,7 +19,7 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'dashboard' || segments[0] === 'cobranca-recorrente';
+    const inAuthGroup = segments[0] === 'dashboard' || segments[0] === 'recorrencia';
 
     if (user && !inAuthGroup) {
       // Se usuário está logado e não está no dashboard, ir para dashboard
@@ -51,6 +51,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
+      <Stack.Screen name="recorrencia" />
     </Stack>
   );
 }

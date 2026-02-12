@@ -37,7 +37,7 @@ function detectCardBrand(number: string): string {
 /**
  * Retorna o ícone e cor da bandeira
  */
-function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; gradient: string[] } {
+function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; gradient: readonly [string, string, ...string[]] } {
     switch (brand) {
         case 'visa': return { icon: 'card', color: '#1A1F71', label: 'Visa', gradient: ['#1a1f71', '#283593'] };
         case 'mastercard': return { icon: 'card', color: '#EB001B', label: 'Mastercard', gradient: ['#eb001b', '#f79e1b'] };
