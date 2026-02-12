@@ -9,11 +9,10 @@ import axios from 'axios';
 const CIELO_MERCHANT_ID = process.env.CIELO_MERCHANT_ID || '';
 const CIELO_MERCHANT_KEY = process.env.CIELO_MERCHANT_KEY || '';
 
-// URL da API Cielo (Produção)
-const CIELO_API_URL = 'https://api.cieloecommerce.cielo.com.br';
-// URL Sandbox: 'https://apisandbox.cieloecommerce.cielo.com.br'
-// URL da API de Consulta Cielo (Produção)
-const CIELO_QUERY_API_URL = 'https://apiquery.cieloecommerce.cielo.com.br';
+// URL da API Cielo (Sandbox)
+const CIELO_API_URL = 'https://apisandbox.cieloecommerce.cielo.com.br';
+// URL da API de Consulta Cielo (Sandbox)
+const CIELO_QUERY_API_URL = 'https://apiquerysandbox.cieloecommerce.cielo.com.br';
 
 const cieloClient = axios.create({
     baseURL: CIELO_API_URL,

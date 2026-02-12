@@ -111,14 +111,14 @@ export const bffApi = {
 
     // Obter consumo de internet
     getInternetUsage: async () => {
-        const response = await api.get('/api/usage');
+        const response = await api.get('/api/contracts/usage');
         return response.data;
     },
 
     // Obter código PIX para uma fatura
     getPixCode: async (invoiceId: string): Promise<string | null> => {
         try {
-            const response = await api.post(`/api/pix/${invoiceId}`);
+            const response = await api.post(`/api/invoices/pix/${invoiceId}`);
             return response.data?.pixCode || null;
         } catch (error) {
             console.error('Error fetching PIX code:', error);
@@ -129,7 +129,9 @@ export const bffApi = {
     // Obter PDF do boleto em base64
     getBoleto: async (boletoId: string): Promise<string | null> => {
         try {
-            const response = await api.post(`/api/boleto/${boletoId}`);
+            // Note: invoiceId is passed as boletoId in the frontend call typically, 
+            // but the backend expects /api/invoices/boleto/:invoiceId
+            const response = await api.post(`/api/invoices/boleto/${boletoId}`);
             return response.data?.base64 || null;
         } catch (error) {
             console.error('Error fetching boleto:', error);
@@ -140,7 +142,7 @@ export const bffApi = {
     // Obter PDF do contrato em base64
     getContractPdf: async (contractId: string): Promise<string | null> => {
         try {
-            const response = await api.post(`/api/contract/${contractId}`);
+            const response = await api.post(`/api/contracts/${contractId}`);
             return response.data?.base64 || null;
         } catch (error) {
             console.error('Error fetching contract PDF:', error);
