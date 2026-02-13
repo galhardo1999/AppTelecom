@@ -10,6 +10,7 @@ interface BiometricsState {
     biometryType: LocalAuthentication.AuthenticationType | null;
     isEnabled: boolean;
     isLoading: boolean;
+    storedEmail: string | null;
 }
 
 interface UseBiometricsReturn extends BiometricsState {
@@ -44,6 +45,7 @@ export function useBiometrics(): UseBiometricsReturn {
         biometryType: null,
         isEnabled: false,
         isLoading: true,
+        storedEmail: null,
     });
 
     // Check device support on mount
@@ -77,11 +79,22 @@ export function useBiometrics(): UseBiometricsReturn {
             const enabledValue = await SecureStore.getItemAsync(BIOMETRICS_ENABLED_KEY);
             const isEnabled = enabledValue === 'true';
 
+            // Get stored email if enabled
+            let storedEmail = null;
+            if (isEnabled) {
+                const credentialsJson = await SecureStore.getItemAsync(BIOMETRICS_CREDENTIALS_KEY);
+                if (credentialsJson) {
+                    const { email } = JSON.parse(credentialsJson);
+                    storedEmail = email;
+                }
+            }
+
             setState({
                 isSupported: true,
                 biometryType: primaryType,
                 isEnabled,
                 isLoading: false,
+                storedEmail,
             });
         } catch (error) {
             console.error('Error checking biometric support:', error);
@@ -111,7 +124,7 @@ export function useBiometrics(): UseBiometricsReturn {
             // Mark as enabled
             await SecureStore.setItemAsync(BIOMETRICS_ENABLED_KEY, 'true');
 
-            setState(prev => ({ ...prev, isEnabled: true }));
+            setState(prev => ({ ...prev, isEnabled: true, storedEmail: email }));
             return true;
         } catch (error) {
             console.error('Error enabling biometrics:', error);
@@ -123,7 +136,7 @@ export function useBiometrics(): UseBiometricsReturn {
         try {
             await SecureStore.deleteItemAsync(BIOMETRICS_CREDENTIALS_KEY);
             await SecureStore.deleteItemAsync(BIOMETRICS_ENABLED_KEY);
-            setState(prev => ({ ...prev, isEnabled: false }));
+            setState(prev => ({ ...prev, isEnabled: false, storedEmail: null }));
         } catch (error) {
             console.error('Error disabling biometrics:', error);
         }

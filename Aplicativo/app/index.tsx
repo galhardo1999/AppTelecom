@@ -113,6 +113,7 @@ export default function LoginScreen() {
         canUseBiometrics,
         enableBiometrics,
         authenticateWithBiometrics,
+        storedEmail,
     } = useBiometrics();
 
     // Carregar email salvo
@@ -209,7 +210,10 @@ export default function LoginScreen() {
             await authApi.login(email, password);
 
             // 2. Se login ok, verificar se pode oferecer biometria
-            if (isSupported && !isEnabled) {
+            // Oferece se: não habilitado OU habilitado para outro usuário
+            const shouldOfferBiometrics = isSupported && (!isEnabled || (storedEmail && storedEmail !== email));
+
+            if (shouldOfferBiometrics) {
                 setLoading(false); // Parar loading para mostrar o modal
                 setShowBiometricPrompt(true);
                 return; // Interromper fluxo para aguardar interação do usuário
@@ -319,34 +323,7 @@ export default function LoginScreen() {
                             </Text>
                         </Animated.View>
 
-                        {/* Botão de Login Biométrico (se disponível) */}
-                        {canUseBiometrics && (
-                            <TouchableOpacity
-                                className="bg-purple-50 border-2 border-purple-200 rounded-xl py-4 px-6 mb-6 flex-row items-center justify-center active:bg-purple-100"
-                                onPress={handleBiometricLogin}
-                                disabled={biometricLoading || loading}
-                            >
-                                {biometricLoading ? (
-                                    <ActivityIndicator color="#7c3aed" />
-                                ) : (
-                                    <>
-                                        <Ionicons name={biometryIcon} size={24} color="#7c3aed" />
-                                        <Text className="text-purple-700 font-semibold text-base ml-3">
-                                            Entrar com {biometryLabel}
-                                        </Text>
-                                    </>
-                                )}
-                            </TouchableOpacity>
-                        )}
 
-                        {/* Divisor (se biometria disponível) */}
-                        {canUseBiometrics && (
-                            <View className="flex-row items-center mb-6">
-                                <View className="flex-1 h-px bg-slate-200" />
-                                <Text className="text-slate-400 text-sm mx-4">ou</Text>
-                                <View className="flex-1 h-px bg-slate-200" />
-                            </View>
-                        )}
 
                         {/* Seção do Formulário */}
                         <View className="space-y-6">
@@ -369,6 +346,8 @@ export default function LoginScreen() {
                                     />
                                 </View>
                             </View>
+
+
 
                             {/* Campo de Senha */}
                             <View>
@@ -420,33 +399,38 @@ export default function LoginScreen() {
                                     <Text className="text-white font-bold text-lg">Entrar</Text>
                                 )}
                             </TouchableOpacity>
+
+                            {/* Divisor (se biometria disponível) */}
+                            {canUseBiometrics && (
+                                <View className="flex-row items-center mt-8 mb-4">
+                                    <View className="flex-1 h-px bg-slate-200" />
+                                    <Text className="text-slate-400 text-sm mx-4">ou</Text>
+                                    <View className="flex-1 h-px bg-slate-200" />
+                                </View>
+                            )}
+
+                            {/* Botão de Login Biométrico (se disponível) */}
+                            {canUseBiometrics && (
+                                <TouchableOpacity
+                                    className="bg-purple-50 border-2 border-purple-200 rounded-xl py-4 px-6 mb-6 flex-row items-center justify-center active:bg-purple-100"
+                                    onPress={handleBiometricLogin}
+                                    disabled={biometricLoading || loading}
+                                >
+                                    {biometricLoading ? (
+                                        <ActivityIndicator color="#7c3aed" />
+                                    ) : (
+                                        <>
+                                            <Ionicons name={biometryIcon} size={24} color="#7c3aed" />
+                                            <Text className="text-purple-700 font-semibold text-base ml-3">
+                                                Entrar com {biometryLabel}
+                                            </Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            )}
                         </View>
 
-                        {/* Prompt de Biometria (exibido após login bem-sucedido se suportado mas não ativado) */}
-                        {showBiometricPrompt && isSupported && !isEnabled && (
-                            <View className="mt-6 bg-purple-50 rounded-xl p-4 border border-purple-200">
-                                <Text className="text-purple-900 font-semibold text-center mb-2">
-                                    Ativar {biometryLabel}?
-                                </Text>
-                                <Text className="text-purple-700 text-center text-sm mb-4">
-                                    Use {biometryLabel} para entrar mais rápido na próxima vez.
-                                </Text>
-                                <View className="flex-row space-x-3">
-                                    <TouchableOpacity
-                                        className="flex-1 bg-white rounded-lg py-2 border border-purple-300"
-                                        onPress={handleSkipBiometrics}
-                                    >
-                                        <Text className="text-purple-600 text-center font-medium">Depois</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        className="flex-1 bg-purple-600 rounded-lg py-2"
-                                        onPress={handleEnableBiometrics}
-                                    >
-                                        <Text className="text-white text-center font-medium">Ativar</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
+
 
                         {/* Rodapé */}
                         <View className="mt-12 items-center">
@@ -458,6 +442,50 @@ export default function LoginScreen() {
 
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Modal de Ativação de Biometria */}
+            <Modal
+                visible={showBiometricPrompt && isSupported}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => handleSkipBiometrics()} // Fechar = pular
+            >
+                <View className="flex-1 justify-center items-center bg-black/50 px-6">
+                    <View className="bg-white w-full rounded-2xl p-6 items-center shadow-xl">
+                        <View className="bg-purple-100 p-4 rounded-full mb-4">
+                            <Ionicons name={biometryIcon} size={48} color="#7c3aed" />
+                        </View>
+
+                        <Text className="text-xl font-bold text-slate-900 text-center mb-2">
+                            Ativar {biometryLabel}?
+                        </Text>
+
+                        <Text className="text-slate-600 text-center mb-8 px-4">
+                            Habilite o {biometryLabel} para acessar sua conta de forma mais rápida e segura na próxima vez.
+                        </Text>
+
+                        <View className="w-full space-y-3">
+                            <TouchableOpacity
+                                className="w-full bg-purple-600 py-4 rounded-xl items-center shadow-sm shadow-purple-200 active:bg-purple-700"
+                                onPress={handleEnableBiometrics}
+                            >
+                                <Text className="text-white font-bold text-lg">
+                                    Ativar {biometryLabel}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                className="w-full py-4 rounded-xl items-center active:bg-slate-50"
+                                onPress={handleSkipBiometrics}
+                            >
+                                <Text className="text-slate-500 font-medium text-lg">
+                                    Agora não
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Modal de Recuperação de Senha */}
             <Modal
