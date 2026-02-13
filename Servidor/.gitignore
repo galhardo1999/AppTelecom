@@ -1,5 +1,29 @@
-.env
+# Dependencies
 node_modules/
+
+# Build
 dist/
-*.log
+
+# Environment
+.env
+.env.*
+*.local
+
+# Vercel
 .vercel
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Scripts com credenciais
+deploy-fix.sh
+
+# Arquivos temporários/gerados
+*.b64
