@@ -1,16 +1,16 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { File as ExpoFile, Paths } from 'expo-file-system';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ContractPickerModal } from '../../src/components/ContractPickerModal';
+import { GradientHeader } from '../../src/components/GradientHeader';
 import { useAuth } from '../../src/context/AuthContext';
 import { useContract } from '../../src/context/ContractContext';
-import { ixcApi } from '../../src/services/api';
+import { bffApi } from '../../src/services/api';
 import { Contract } from '../../src/types/ixc';
-import { formatCurrency } from '../../src/utils/formatters';
+import { logger } from '../../src/utils/logger';
 
 
 
@@ -30,7 +30,7 @@ export default function PlanoScreen() {
     const handleDownloadContract = async (contractId: string) => {
         try {
             setLoadingContract(true);
-            const base64Pdf = await ixcApi.getContractPdf(contractId);
+            const base64Pdf = await bffApi.getContractPdf(contractId);
 
             if (!base64Pdf) {
                 Alert.alert('Indisponível', 'Não foi possível carregar o contrato.');
@@ -52,7 +52,7 @@ export default function PlanoScreen() {
                 Alert.alert('Erro', 'Compartilhamento não disponível.');
             }
         } catch (error) {
-            console.error('Error downloading contract:', error);
+            logger.error('Error downloading contract:', error);
             Alert.alert('Erro', 'Não foi possível baixar o contrato.');
         } finally {
             setLoadingContract(false);
@@ -101,18 +101,7 @@ export default function PlanoScreen() {
     return (
         <View className="flex-1 bg-slate-50">
             {/* Header */}
-            <View className="h-[28%] w-full relative">
-                <LinearGradient
-                    colors={['#a855f7', '#7e22ce', '#3b0764']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="absolute w-full h-full rounded-b-[40px]"
-                />
-                <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6 pt-4">
-                    <Text className="text-white text-2xl font-bold mb-2">Meu Plano</Text>
-                    <Text className="text-white/80 text-base">Detalhes do seu plano de internet</Text>
-                </SafeAreaView>
-            </View>
+            <GradientHeader title="Meu Plano" subtitle="Detalhes do seu plano de internet" />
 
             {/* Content */}
             <View className="flex-1 -mt-16 px-6">
@@ -256,76 +245,13 @@ export default function PlanoScreen() {
             </View>
 
             {/* Modal de Seleção de Contrato */}
-            <Modal
+            <ContractPickerModal
                 visible={showContractPicker}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowContractPicker(false)}
-            >
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl">
-                        <View className="p-5 border-b border-slate-100">
-                            <View className="flex-row justify-between items-center">
-                                <Text className="text-xl font-bold text-slate-800">Selecione o Contrato</Text>
-                                <TouchableOpacity onPress={() => setShowContractPicker(false)}>
-                                    <Ionicons name="close" size={24} color="#64748b" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                        <ScrollView className="max-h-80">
-                            {contracts.map((contract) => {
-                                const isSelected = contract.id === selectedContract?.id;
-                                const statusInfo = getStatusInfo(contract.status);
-                                return (
-                                    <TouchableOpacity
-                                        key={contract.id}
-                                        onPress={() => selectContract(contract)}
-                                        className={`flex-row items-center p-4 border-b border-slate-100 ${isSelected ? 'bg-purple-50' : 'bg-white'
-                                            }`}
-                                    >
-                                        <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${isSelected ? 'bg-purple-600' : 'bg-slate-100'
-                                            }`}>
-                                            <Ionicons
-                                                name="document-text"
-                                                size={20}
-                                                color={isSelected ? 'white' : '#64748b'}
-                                            />
-                                        </View>
-                                        <View className="flex-1">
-                                            {/* Número do contrato + Badge de status na mesma linha */}
-                                            <View className="flex-row items-center">
-                                                <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>
-                                                    Contrato #{contract.id}
-                                                </Text>
-                                                <View className={`flex-row items-center px-2 py-0.5 rounded-full ml-2 ${statusInfo.color}`}>
-                                                    <View className={`w-1.5 h-1.5 rounded-full mr-1 ${statusInfo.dotColor}`} />
-                                                    <Text className={`text-xs font-semibold ${statusInfo.textColor}`}>
-                                                        {statusInfo.label}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                            <Text className="text-slate-500 text-sm mt-1" numberOfLines={1}>
-                                                {contract.endereco ? `${contract.endereco}, ${contract.numero || 'S/N'}` : 'Endereço não disponível'}
-                                            </Text>
-                                        </View>
-                                        {isSelected && (
-                                            <Ionicons name="checkmark-circle" size={24} color="#7c3aed" />
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                        <View className="p-5">
-                            <TouchableOpacity
-                                onPress={() => setShowContractPicker(false)}
-                                className="bg-slate-100 rounded-xl py-4 items-center"
-                            >
-                                <Text className="text-slate-600 font-semibold">Cancelar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                contracts={contracts}
+                selectedContractId={selectedContract?.id || null}
+                onSelect={selectContract}
+                onClose={() => setShowContractPicker(false)}
+            />
         </View>
     );
 }

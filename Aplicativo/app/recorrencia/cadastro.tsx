@@ -15,61 +15,22 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CreditCardPreview } from '../../src/components/CreditCardPreview';
 import { useContract } from '../../src/context/ContractContext';
+import { useScreenSecurity } from '../../src/hooks/useScreenSecurity';
 import { bffApi } from '../../src/services/api';
+import { detectCardBrand, getBrandInfo, maskCardNumber, maskExpiry } from '../../src/utils/cardUtils';
+import { logger } from '../../src/utils/logger';
 
 const { width } = Dimensions.get('window');
 
-/**
- * Detecta a bandeira do cartão pelo número (primeiros dígitos)
- */
-function detectCardBrand(number: string): string {
-    const clean = number.replace(/\D/g, '');
-    if (/^4/.test(clean)) return 'visa';
-    if (/^5[1-5]/.test(clean) || /^2[2-7]/.test(clean)) return 'mastercard';
-    if (/^(636368|438935|504175|451416|636297|5067|4576|4011|506699)/.test(clean)) return 'elo';
-    if (/^3[47]/.test(clean)) return 'amex';
-    if (/^(606282|3841)/.test(clean)) return 'hipercard';
-    if (/^3(?:0[0-5]|[68])/.test(clean)) return 'diners';
-    return '';
-}
-
-/**
- * Retorna o ícone e cor da bandeira
- */
-function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; gradient: readonly [string, string, ...string[]] } {
-    switch (brand) {
-        case 'visa': return { icon: 'card', color: '#1A1F71', label: 'Visa', gradient: ['#1a1f71', '#283593'] };
-        case 'mastercard': return { icon: 'card', color: '#EB001B', label: 'Mastercard', gradient: ['#eb001b', '#f79e1b'] };
-        case 'elo': return { icon: 'card', color: '#00A4E0', label: 'Elo', gradient: ['#00A4E0', '#00416B'] };
-        case 'amex': return { icon: 'card', color: '#006FCF', label: 'Amex', gradient: ['#006FCF', '#002663'] };
-        default: return { icon: 'card-outline', color: '#64748b', label: 'Cartão', gradient: ['#334155', '#1e293b'] };
-    }
-}
-
-/**
- * Aplica máscara no número do cartão: XXXX XXXX XXXX XXXX
- */
-function maskCardNumber(value: string): string {
-    const clean = value.replace(/\D/g, '').slice(0, 16);
-    const groups = clean.match(/.{1,4}/g);
-    return groups ? groups.join(' ') : clean;
-}
-
-/**
- * Aplica máscara na validade: MM/AA
- */
-function maskExpiry(value: string): string {
-    const clean = value.replace(/\D/g, '').slice(0, 4);
-    if (clean.length >= 3) {
-        return `${clean.slice(0, 2)}/${clean.slice(2)}`;
-    }
-    return clean;
-}
 
 export default function CobrancaRecorrenteCadastroScreen() {
     const router = useRouter();
     const { selectedContract, refreshContracts } = useContract();
+
+    // Prevenir screenshots em tela de dados financeiros
+    useScreenSecurity(true);
 
     const [nomeTitular, setNomeTitular] = useState('');
     const [numeroCartao, setNumeroCartao] = useState('');
@@ -136,12 +97,8 @@ export default function CobrancaRecorrenteCadastroScreen() {
                 customerName: nomeTitular,
             };
 
-            console.log('Dados do cartão a serem enviados:', cardData);
-
             // Enviar dados do cartão para o backend (Cielo tokeniza no servidor)
             const result = await bffApi.setupRecurringCard(selectedContract.id, cardData);
-
-            console.log('Resultado da API:', result);
 
             if (result.success) {
                 await refreshContracts();
@@ -154,7 +111,7 @@ export default function CobrancaRecorrenteCadastroScreen() {
                 Alert.alert('Erro', result.message || 'Erro ao cadastrar cartão');
             }
         } catch (error: any) {
-            console.error('Erro ao cadastrar cartão:', error);
+            logger.error('Erro ao cadastrar cartão:', error);
             const errorMessage = error.response?.data?.error || 'Não foi possível cadastrar o cartão. Tente novamente.';
             Alert.alert('Erro', errorMessage);
         } finally {
@@ -189,52 +146,12 @@ export default function CobrancaRecorrenteCadastroScreen() {
 
                         {/* Cartão Preview - Visual Premium */}
                         <View className="items-center mb-8 mt-2">
-                            <LinearGradient
-                                colors={brandInfo.gradient as [string, string, ...string[]]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                className="w-full h-56 rounded-2xl p-6 justify-between shadow-2xl"
-                                style={{
-                                    shadowColor: brandInfo.gradient[0],
-                                    shadowOffset: { width: 0, height: 10 },
-                                    shadowOpacity: 0.3,
-                                    shadowRadius: 20,
-                                    elevation: 10
-                                }}
-                            >
-                                <View className="flex-row justify-between items-start">
-                                    <View>
-                                        <Ionicons name="wifi" size={24} color="rgba(255,255,255,0.8)" style={{ transform: [{ rotate: '90deg' }] }} />
-                                    </View>
-                                    <Text className="text-white font-bold text-lg italic opacity-90">
-                                        {brandInfo.label}
-                                    </Text>
-                                </View>
-
-                                <View>
-                                    <View className="flex-row items-center gap-3 mb-2">
-                                        <View className="w-12 h-9 bg-yellow-400/20 rounded-md border border-yellow-200/30" />
-                                    </View>
-                                    <Text className="text-white text-2xl font-mono tracking-widest shadow-sm">
-                                        {cleanNumber.length > 0 ? maskCardNumber(cleanNumber) : '•••• •••• •••• ••••'}
-                                    </Text>
-                                </View>
-
-                                <View className="flex-row justify-between items-end">
-                                    <View>
-                                        <Text className="text-white/60 text-[10px] uppercase font-bold tracking-wider mb-1">Titular</Text>
-                                        <Text className="text-white font-medium tracking-wide uppercase shadow-sm">
-                                            {nomeTitular || 'NOME DO TITULAR'}
-                                        </Text>
-                                    </View>
-                                    <View>
-                                        <Text className="text-white/60 text-[10px] uppercase font-bold tracking-wider mb-1">Validade</Text>
-                                        <Text className="text-white font-medium tracking-wide shadow-sm">
-                                            {validade || 'MM/AA'}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </LinearGradient>
+                            <CreditCardPreview
+                                brand={bandeira}
+                                displayNumber={cleanNumber.length > 0 ? maskCardNumber(cleanNumber) : '•••• •••• •••• ••••'}
+                                holder={nomeTitular}
+                                expiry={validade}
+                            />
                         </View>
 
                         {/* Formulário Clean */}

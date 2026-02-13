@@ -3,10 +3,11 @@
  */
 
 import { Hono } from 'hono';
-import { ixcService } from '../services/ixc.js';
+import { ixcService } from '../services/ixc/index.js';
 import { cieloService } from '../services/cielo.js';
 import { withErrorHandler } from '../middleware/errorHandler.js';
 import { cached } from '../services/cache.js';
+import { recurringCardSchema, validateBody } from '../middleware/validators.js';
 import type { JWTPayload } from '../types/index.js';
 
 type Variables = {
@@ -23,7 +24,6 @@ contractRoutes.get('/', withErrorHandler(
     async (c) => {
         const user = c.get('user') as JWTPayload;
 
-        // Cache de 5 minutos para contratos
         const contracts = await cached(
             `contracts:${user.userId}`,
             () => ixcService.getContracts(user.userId),
@@ -36,14 +36,13 @@ contractRoutes.get('/', withErrorHandler(
 ));
 
 /**
- * GET /api/usage
+ * GET /api/contracts/usage
  * Obter consumo de internet
  */
 contractRoutes.get('/usage', withErrorHandler(
     async (c) => {
         const user = c.get('user') as JWTPayload;
 
-        // Cache de 1 minuto para consumo (muda frequentemente)
         const usage = await cached(
             `usage:${user.userId}`,
             () => ixcService.getInternetUsage(user.userId),
@@ -56,14 +55,13 @@ contractRoutes.get('/usage', withErrorHandler(
 ));
 
 /**
- * POST /api/contract/:contractId
+ * POST /api/contracts/:contractId
  * Obter PDF do contrato
  */
 contractRoutes.post('/:contractId', withErrorHandler(
     async (c) => {
         const contractId = c.req.param('contractId');
 
-        // Cache de 1 hora para PDF de contrato
         const base64Pdf = await cached(
             `contract-pdf:${contractId}`,
             () => ixcService.getContractPdf(contractId),
@@ -81,42 +79,30 @@ contractRoutes.post('/:contractId', withErrorHandler(
 
 /**
  * PUT /api/contracts/:contractId/recurring-card
- * Envia dados do cartão direto para o IXC — IXC tokeniza via Cielo internamente
+ * Tokeniza cartão via Cielo e salva no contrato IXC
  */
-contractRoutes.put('/:contractId/recurring-card', async (c) => {
-    try {
+contractRoutes.put('/:contractId/recurring-card', withErrorHandler(
+    async (c) => {
         const contractId = c.req.param('contractId');
-        const body = await c.req.json();
 
-        const { cardNumber, holder, expirationDate, securityCode, brand, customerName } = body;
-
-        // Validar campos obrigatórios
-        if (!contractId || !cardNumber || !holder || !expirationDate || !securityCode || !brand) {
-            return c.json({
-                error: 'Campos obrigatórios: cardNumber, holder, expirationDate, securityCode, brand'
-            }, 400);
+        // Validar input com Zod
+        const validation = await validateBody(c, recurringCardSchema);
+        if (!validation.success) {
+            return validation.response;
         }
 
-        // Validar bandeira aceita
-        const bandeirasValidas = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners'];
-        if (!bandeirasValidas.includes(brand.toLowerCase())) {
-            return c.json({
-                error: `Bandeira inválida. Aceitas: ${bandeirasValidas.join(', ')}`
-            }, 400);
-        }
+        const { cardNumber, holder, expirationDate, securityCode, brand, customerName } = validation.data;
 
         // 1. Tokenizar cartão na Cielo (com retry)
         console.log('[RECURRING-CARD] Tokenizando cartão na Cielo...');
         const cardToken = await cieloService.tokenizeCardWithRetry({
             customerName: customerName || holder,
-            cardNumber: cardNumber,
-            holder: holder,
-            expirationDate: expirationDate,
-            brand: brand,
-            securityCode: securityCode,
+            cardNumber,
+            holder,
+            expirationDate,
+            brand,
+            securityCode,
         });
-
-        console.log('[RECURRING-CARD] Token gerado:', cardToken);
 
         // 1.1 Validar se o token está ativo/acessível
         const isTokenValid = await cieloService.validateToken(cardToken);
@@ -125,7 +111,6 @@ contractRoutes.put('/:contractId/recurring-card', async (c) => {
         }
 
         // 2. Enviar dados do cartão + token para o IXC
-        console.log('[RECURRING-CARD] Enviando dados do cartão para IXC...');
         const result = await ixcService.updateContractRecurringCard(contractId, {
             cardNumber: cardNumber.replace(/\D/g, ''),
             holder: customerName || holder,
@@ -141,25 +126,9 @@ contractRoutes.put('/:contractId/recurring-card', async (c) => {
             contractId,
             data: result
         });
-    } catch (error: any) {
-        console.error('[RECURRING-CARD] Error:', error.response?.data || error.message);
-
-        const errorMessage = error.message || 'Erro desconhecido';
-
-        // Se for erro de validação da Cielo, retornar 400
-        if (errorMessage.includes('Erro Cielo') || errorMessage.includes('Credenciais da Cielo')) {
-            return c.json({
-                error: 'Erro na validação do cartão',
-                details: errorMessage.replace('Erro Cielo: ', '')
-            }, 400);
-        }
-
-        return c.json({
-            error: 'Erro ao cadastrar cartão recorrente',
-            details: errorMessage
-        }, 500);
-    }
-});
+    },
+    'Erro ao cadastrar cartão recorrente'
+));
 
 /**
  * DELETE /api/contracts/:contractId/recurring-card

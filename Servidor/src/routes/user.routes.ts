@@ -3,7 +3,7 @@
  */
 
 import { Hono } from 'hono';
-import { ixcService } from '../services/ixc.js';
+import { ixcService } from '../services/ixc/index.js';
 import { withErrorHandler } from '../middleware/errorHandler.js';
 import type { JWTPayload } from '../types/index.js';
 

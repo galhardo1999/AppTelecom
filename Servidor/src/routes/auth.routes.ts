@@ -5,8 +5,9 @@
 import { Hono } from 'hono';
 import { loginRateLimiter } from '../middleware/rateLimiter.js';
 import { generateToken } from '../middleware/auth.js';
-import { ixcService } from '../services/ixc.js';
+import { ixcService } from '../services/ixc/index.js';
 import { cached } from '../services/cache.js';
+import { loginSchema, validateBody } from '../middleware/validators.js';
 import type { JWTPayload, LoginResponse } from '../types/index.js';
 
 const authRoutes = new Hono();
@@ -17,11 +18,13 @@ const authRoutes = new Hono();
  */
 authRoutes.post('/login', loginRateLimiter, async (c) => {
     try {
-        const { email, password } = await c.req.json();
-
-        if (!email || !password) {
-            return c.json({ error: 'Email e senha são obrigatórios' }, 400);
+        // Validar input com Zod
+        const validation = await validateBody(c, loginSchema);
+        if (!validation.success) {
+            return validation.response;
         }
+
+        const { email, password } = validation.data;
 
         // Buscar cliente no IXC
         const client = await ixcService.findClientByEmail(email);
@@ -37,7 +40,7 @@ authRoutes.post('/login', loginRateLimiter, async (c) => {
             }, 403);
         }
 
-        // Validar senha (apenas hash MD5, sem fallback de texto plano)
+        // Validar senha
         if (!client.senha) {
             return c.json({ error: 'Cadastro sem senha. Contate o suporte.' }, 401);
         }
@@ -62,8 +65,8 @@ authRoutes.post('/login', loginRateLimiter, async (c) => {
         if (client.cidade) {
             cidadeNome = await cached(
                 `city:${client.cidade}`,
-                () => ixcService.getCityName(client.cidade),
-                86400 // 24 horas
+                () => ixcService.getCityName(client.cidade!),
+                86400
             );
         }
 

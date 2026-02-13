@@ -6,7 +6,9 @@ import { Alert, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
 import { useContract } from '../../src/context/ContractContext';
+import { useScreenSecurity } from '../../src/hooks/useScreenSecurity';
 import { formatFullName } from '../../src/utils/formatters';
+import { maskEmail } from '../../src/utils/maskUtils';
 
 interface MenuItem {
     title: string;
@@ -26,6 +28,9 @@ export default function PerfilScreen() {
     const { selectedContract } = useContract();
     const fullName = formatFullName(user?.razao);
     const [showPendenciasModal, setShowPendenciasModal] = useState(false);
+
+    // Prevenir screenshots em tela de dados pessoais
+    useScreenSecurity(true);
 
     // Verificar se o contrato está em pré-contrato aguardando assinatura
     const hasPendencias = selectedContract?.status === 'P' && selectedContract?.status_internet === 'AA';
@@ -155,7 +160,7 @@ export default function PerfilScreen() {
                         </View>
                         <View className="ml-4 flex-1">
                             <Text className="text-slate-800 font-bold text-lg">{user?.razao}</Text>
-                            <Text className="text-slate-500 text-sm">{user?.hotsite_email}</Text>
+                            <Text className="text-slate-500 text-sm">{maskEmail(user?.hotsite_email || '')}</Text>
                         </View>
                     </View>
                 </View>

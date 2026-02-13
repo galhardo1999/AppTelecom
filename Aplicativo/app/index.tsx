@@ -4,8 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Image,
+    Keyboard,
     KeyboardAvoidingView,
     Linking,
     Modal,
@@ -14,15 +14,14 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    Keyboard,
-    LayoutAnimation
+    View
 } from 'react-native';
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertType, CustomAlert } from '../src/components/CustomAlert';
 import { useAuth } from '../src/context/AuthContext';
 import { getBiometryIcon, getBiometryLabel, useBiometrics } from '../src/hooks/useBiometrics';
+import { logger } from '../src/utils/logger';
 
 // Componente de imagem animado
 const AnimatedImage = Animated.createAnimatedComponent(Image);
@@ -143,7 +142,7 @@ export default function LoginScreen() {
                 await signIn(credentials.email, credentials.password);
             }
         } catch (error: any) {
-            console.error('Biometric login error:', error);
+            logger.error('Biometric login error:', error);
             // Não mostra erro - usuário ainda pode fazer login com senha
         } finally {
             setBiometricLoading(false);

@@ -82,7 +82,7 @@ export function maskAddress(address: string): string {
 
 /**
  * Mascara CNPJ
- * Ex: 12.345.678/0001-90 -> **.***.***/0001 -**
+ * Ex: 12.345.678/0001-90 → oculta todos os dígitos
  */
 export function maskCNPJ(cnpj: string): string {
     if (!cnpj) return '';
@@ -140,8 +140,8 @@ export function maskContractId(id: string): string {
 
 /**
  * Mascara data de nascimento mostrando apenas ano
- * Ex: 15/03/1990 -> **/****/1990
-    */
+ * Ex: 15/03/1990 → oculta dia e mês
+ */
 export function maskBirthDate(date: string): string {
     if (!date) return '';
 

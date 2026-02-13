@@ -12,28 +12,22 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CreditCardPreview } from '../../src/components/CreditCardPreview';
 import { useContract } from '../../src/context/ContractContext';
+import { useScreenSecurity } from '../../src/hooks/useScreenSecurity';
 import { bffApi } from '../../src/services/api';
 
 const { width } = Dimensions.get('window');
 
-/**
- * Retorna o ícone e cor da bandeira
- */
-function getBrandInfo(brand: string): { icon: keyof typeof Ionicons.glyphMap; color: string; label: string; gradient: readonly [string, string, ...string[]] } {
-    switch (brand) {
-        case 'visa': return { icon: 'card', color: '#1A1F71', label: 'Visa', gradient: ['#1a1f71', '#283593'] };
-        case 'mastercard': return { icon: 'card', color: '#EB001B', label: 'Mastercard', gradient: ['#eb001b', '#f79e1b'] };
-        case 'elo': return { icon: 'card', color: '#00A4E0', label: 'Elo', gradient: ['#00A4E0', '#00416B'] };
-        case 'amex': return { icon: 'card', color: '#006FCF', label: 'Amex', gradient: ['#006FCF', '#002663'] };
-        default: return { icon: 'card-outline', color: '#64748b', label: 'Cartão', gradient: ['#334155', '#1e293b'] };
-    }
-}
+
 
 export default function CobrancaRecorrenteScreen() {
     const router = useRouter();
     const { selectedContract, refreshContracts } = useContract();
     const [loading, setLoading] = useState(false);
+
+    // Prevenir screenshots em tela de dados financeiros
+    useScreenSecurity(true);
 
     // State for saved card
     const [savedCard, setSavedCard] = useState<{
@@ -131,52 +125,12 @@ export default function CobrancaRecorrenteScreen() {
                     {/* Saved Card Preview */}
                     {savedCard && (
                         <View className="items-center mb-8">
-                            <LinearGradient
-                                colors={savedCard ? getBrandInfo(savedCard.brand).gradient : ['#334155', '#1e293b']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                className="w-full h-56 rounded-2xl p-6 justify-between shadow-2xl"
-                                style={{
-                                    shadowColor: savedCard ? getBrandInfo(savedCard.brand).gradient[0] : '#000',
-                                    shadowOffset: { width: 0, height: 10 },
-                                    shadowOpacity: 0.3,
-                                    shadowRadius: 20,
-                                    elevation: 10
-                                }}
-                            >
-                                <View className="flex-row justify-between items-start">
-                                    <View>
-                                        <Ionicons name="wifi" size={24} color="rgba(255,255,255,0.8)" style={{ transform: [{ rotate: '90deg' }] }} />
-                                    </View>
-                                    <Text className="text-white font-bold text-lg italic opacity-90">
-                                        {getBrandInfo(savedCard.brand).label}
-                                    </Text>
-                                </View>
-
-                                <View>
-                                    <View className="flex-row items-center gap-3 mb-2">
-                                        <View className="w-12 h-9 bg-yellow-400/20 rounded-md border border-yellow-200/30" />
-                                    </View>
-                                    <Text className="text-white text-2xl font-mono tracking-widest shadow-sm">
-                                        {`•••• •••• •••• ${savedCard.last4}`}
-                                    </Text>
-                                </View>
-
-                                <View className="flex-row justify-between items-end">
-                                    <View>
-                                        <Text className="text-white/60 text-[10px] uppercase font-bold tracking-wider mb-1">Titular</Text>
-                                        <Text className="text-white font-medium tracking-wide uppercase shadow-sm">
-                                            {savedCard.holder}
-                                        </Text>
-                                    </View>
-                                    <View>
-                                        <Text className="text-white/60 text-[10px] uppercase font-bold tracking-wider mb-1">Validade</Text>
-                                        <Text className="text-white font-medium tracking-wide shadow-sm">
-                                            {savedCard.expiry}
-                                        </Text>
-                                    </View>
-                                </View>
-                            </LinearGradient>
+                            <CreditCardPreview
+                                brand={savedCard.brand}
+                                displayNumber={`•••• •••• •••• ${savedCard.last4}`}
+                                holder={savedCard.holder}
+                                expiry={savedCard.expiry}
+                            />
 
                             <TouchableOpacity
                                 onPress={handleRemoveCard}

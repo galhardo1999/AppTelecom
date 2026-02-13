@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { logger } from '../utils/logger';
 
 const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3000';
 
@@ -121,7 +122,7 @@ export const bffApi = {
             const response = await api.post(`/api/invoices/pix/${invoiceId}`);
             return response.data?.pixCode || null;
         } catch (error) {
-            console.error('Error fetching PIX code:', error);
+            logger.error('Error fetching PIX code:', error);
             return null;
         }
     },
@@ -134,7 +135,7 @@ export const bffApi = {
             const response = await api.post(`/api/invoices/boleto/${boletoId}`);
             return response.data?.base64 || null;
         } catch (error) {
-            console.error('Error fetching boleto:', error);
+            logger.error('Error fetching boleto:', error);
             return null;
         }
     },
@@ -145,7 +146,7 @@ export const bffApi = {
             const response = await api.post(`/api/contracts/${contractId}`);
             return response.data?.base64 || null;
         } catch (error) {
-            console.error('Error fetching contract PDF:', error);
+            logger.error('Error fetching contract PDF:', error);
             return null;
         }
     },
@@ -159,9 +160,7 @@ export const bffApi = {
         brand: string;
         customerName?: string;
     }) => {
-        console.log('[BFF API] Enviando requisição para setupRecurringCard:', { contractId, ...cardData });
         const response = await api.put(`/api/contracts/${contractId}/recurring-card`, cardData);
-        console.log('[BFF API] Resposta de setupRecurringCard:', response.data);
         return response.data;
     },
 
@@ -170,8 +169,5 @@ export const bffApi = {
         return response.data;
     },
 };
-
-// Export legado para compatibilidade
-export const ixcApi = bffApi;
 
 export default api;

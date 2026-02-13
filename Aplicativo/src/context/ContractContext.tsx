@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { ixcApi } from '../services/api';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { bffApi } from '../services/api';
 import { Contract } from '../types/ixc';
+import { logger } from '../utils/logger';
 import { useAuth } from './AuthContext';
 
 interface ContractContextType {
@@ -37,7 +38,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
 
             try {
                 setLoading(true);
-                const response = await ixcApi.getClientContracts(user.id);
+                const response = await bffApi.getClientContracts();
 
                 // Garantir que contractsList é um array
                 const contractsList = Array.isArray(response) ? response : [];
@@ -51,7 +52,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
                     setSelectedContractState(null);
                 }
             } catch (error) {
-                console.error('Error loading contracts:', error);
+                logger.error('Error loading contracts:', error);
                 setContracts([]);
                 setSelectedContractState(null);
             } finally {
@@ -80,7 +81,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
                     if (user?.id) {
                         setLoading(true);
                         try {
-                            const response = await ixcApi.getClientContracts(user.id);
+                            const response = await bffApi.getClientContracts();
                             const contractsList = Array.isArray(response) ? response : [];
                             setContracts(contractsList);
 
@@ -93,7 +94,7 @@ export function ContractProvider({ children }: { children: ReactNode }) {
                                 setSelectedContractState(activeContract || null);
                             }
                         } catch (error) {
-                            console.error('Error refreshing contracts:', error);
+                            logger.error('Error refreshing contracts:', error);
                         } finally {
                             setLoading(false);
                         }

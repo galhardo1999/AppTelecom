@@ -3,23 +3,11 @@
  * Reduz código repetido nas chamadas à API IXC
  */
 
-import axios from 'axios';
-import { Buffer } from 'buffer';
-import { IXC_HOST, IXC_TOKEN } from '../config/env.js';
+import { ixcClient } from '../services/ixc/http-client.js';
 import type { IXCQueryParams } from '../types/index.js';
 
-// Criar cabeçalho de Basic Auth
-const authHeader = `Basic ${Buffer.from(IXC_TOKEN).toString('base64')}`;
-
-// Cliente axios configurado para IXC
-export const ixcClient = axios.create({
-    baseURL: IXC_HOST,
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader,
-        'ixcsoft': 'listar',
-    },
-});
+// Re-exportar o client para uso externo, se necessário
+export { ixcClient };
 
 /**
  * Executa uma query padronizada no IXC

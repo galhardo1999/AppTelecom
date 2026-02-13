@@ -41,18 +41,3 @@ export const getCityImageUrls = (cityId: string | undefined): string[] => {
 
     return [`${BFF_URL}/img/default`];
 };
-
-/**
- * Verifica se a cidade tem imagem específica
- */
-export const hasCityImage = (cityId: string | undefined): boolean => {
-    if (!cityId) return false;
-    return cityId in CITY_IMAGES;
-};
-
-/**
- * URL da imagem padrão
- */
-export const getDefaultImageUrl = (): string => {
-    return `${BFF_URL}/img/default`;
-};

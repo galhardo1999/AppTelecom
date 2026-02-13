@@ -3,10 +3,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AdBanner } from '../../src/components/AdBanner';
+import { ContractPickerModal } from '../../src/components/ContractPickerModal';
 import { PromotionalModal } from '../../src/components/PromotionalModal';
 import { useAuth } from '../../src/context/AuthContext';
 import { useContract } from '../../src/context/ContractContext';
@@ -333,55 +334,13 @@ export default function HomeScreen() {
             </ScrollView>
 
             {/* Modal de Seleção de Contrato */}
-            <Modal
+            <ContractPickerModal
                 visible={showContractPicker}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowContractPicker(false)}
-            >
-                <View className="flex-1 justify-end bg-black/50">
-                    <View className="bg-white rounded-t-3xl max-h-[70%]">
-                        <View className="p-6 border-b border-slate-100">
-                            <View className="flex-row justify-between items-center">
-                                <Text className="text-slate-800 font-bold text-lg">Selecionar Contrato</Text>
-                                <TouchableOpacity onPress={() => setShowContractPicker(false)}>
-                                    <Ionicons name="close" size={24} color="#64748b" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                        <ScrollView className="p-6">
-                            {contracts.map((contract) => {
-                                const isSelected = selectedContract?.id === contract.id;
-                                return (
-                                    <TouchableOpacity
-                                        key={contract.id}
-                                        onPress={() => handleSelectContract(contract)}
-                                        className={`p-4 rounded-xl mb-3 flex-row items-center ${isSelected ? 'bg-purple-50 border-2 border-purple-500' : 'bg-slate-50 border border-slate-200'
-                                            }`}
-                                    >
-                                        <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isSelected ? 'bg-purple-500' : 'bg-slate-200'
-                                            }`}>
-                                            <Ionicons name="document-text" size={20} color={isSelected ? 'white' : '#64748b'} />
-                                        </View>
-                                        <View className="flex-1">
-                                            <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'
-                                                }`}>
-                                                {contract.contrato || contract.id}
-                                            </Text>
-                                            <Text className="text-slate-500 text-sm">
-                                                {contract.endereco ? `${contract.endereco}, ${contract.numero || 'S/N'}` : 'Internet'}
-                                            </Text>
-                                        </View>
-                                        {isSelected && (
-                                            <Ionicons name="checkmark-circle" size={24} color="#7c3aed" />
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
+                contracts={contracts}
+                selectedContractId={selectedContract?.id || null}
+                onSelect={handleSelectContract}
+                onClose={() => setShowContractPicker(false)}
+            />
         </View>
     );
 }

@@ -44,30 +44,3 @@ export function useContracts() {
     });
 }
 
-/**
- * Hook to fetch internet usage with caching
- */
-export function useInternetUsage() {
-    const { user } = useAuth();
-
-    return useQuery({
-        queryKey: ['usage', user?.id],
-        queryFn: () => bffApi.getInternetUsage(),
-        enabled: !!user?.id,
-        staleTime: 2 * 60 * 1000, // 2 minutes (usage changes often)
-    });
-}
-
-/**
- * Hook to fetch user profile with caching
- */
-export function useUserProfile() {
-    const { user } = useAuth();
-
-    return useQuery({
-        queryKey: ['user', user?.id],
-        queryFn: () => bffApi.getUser(),
-        enabled: !!user?.id,
-        staleTime: 15 * 60 * 1000, // 15 minutes
-    });
-}

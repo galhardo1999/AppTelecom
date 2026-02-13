@@ -4,15 +4,12 @@
  */
 
 import axios from 'axios';
-
-// Configuração do ambiente Cielo
-const CIELO_MERCHANT_ID = process.env.CIELO_MERCHANT_ID || '';
-const CIELO_MERCHANT_KEY = process.env.CIELO_MERCHANT_KEY || '';
-
-// URL da API Cielo (Sandbox)
-const CIELO_API_URL = 'https://apisandbox.cieloecommerce.cielo.com.br';
-// URL da API de Consulta Cielo (Sandbox)
-const CIELO_QUERY_API_URL = 'https://apiquerysandbox.cieloecommerce.cielo.com.br';
+import {
+    CIELO_MERCHANT_ID,
+    CIELO_MERCHANT_KEY,
+    CIELO_API_URL,
+    CIELO_QUERY_API_URL,
+} from '../config/env.js';
 
 const cieloClient = axios.create({
     baseURL: CIELO_API_URL,

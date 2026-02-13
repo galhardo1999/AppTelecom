@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authApi, setAccessToken, setOnUnauthorized } from '../services/api';
+import { logger } from '../utils/logger';
 
 // Define User Type
 type User = {
@@ -9,7 +10,9 @@ type User = {
     hotsite_email: string;
     endereco?: string;
     cidadeNome?: string; // Nome da cidade do usuário
-    [key: string]: any;
+    cnpj_cpf?: string;
+    telefone_celular?: string;
+    cidade?: string;
 };
 
 type AuthContextType = {
@@ -40,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 setAccessToken(null);
                 setUser(null);
             } catch (error) {
-                console.error('Failed to clear session', error);
+                logger.error('Failed to clear session', error);
             } finally {
                 setIsLoading(false);
             }
@@ -51,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for 401 unauthorized events from API
     useEffect(() => {
         const handleUnauthorized = () => {
-            console.log('Session expired, signing out...');
+            logger.info('Session expired, signing out...');
             setAccessToken(null);
             setUser(null);
         };
@@ -84,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(userData);
 
         } catch (error: any) {
-            console.error('Login error:', error);
+            logger.error('Login error:', error);
 
             // Extract error message from response or use generic
             const message = error.response?.data?.error

@@ -19,14 +19,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { ContractPickerModal } from '../../src/components/ContractPickerModal';
 import { SkeletonInvoiceHeader } from '../../src/components/Skeleton';
 import { ErrorState } from '../../src/components/StateComponents';
 import { useAuth } from '../../src/context/AuthContext';
 import { useContract } from '../../src/context/ContractContext';
 import { useInvoiceHistory } from '../../src/hooks/useQueries';
+import { useScreenSecurity } from '../../src/hooks/useScreenSecurity';
 import { bffApi } from '../../src/services/api';
-import { Contract, Invoice } from '../../src/types/ixc';
+import { Invoice } from '../../src/types/ixc';
 import { formatCurrency, formatDateShort, formatFullName, getMonthName, getMonthYear } from '../../src/utils/formatters';
+import { logger } from '../../src/utils/logger';
 import { showToast } from '../../src/utils/toast';
 
 
@@ -38,6 +41,10 @@ export default function FaturasScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const { contracts, selectedContract, selectedContractId, setSelectedContract } = useContract();
+
+    // Prevenir screenshots em tela de dados financeiros
+    useScreenSecurity(true);
+
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [showPicker, setShowPicker] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('vencidas');
@@ -187,7 +194,7 @@ export default function FaturasScreen() {
                 Alert.alert('Indisponível', 'Código PIX não encontrado para esta fatura.');
             }
         } catch (error) {
-            console.error('Error fetching PIX:', error);
+            logger.error('Error fetching PIX:', error);
             Alert.alert('Erro', 'Não foi possível obter o código PIX. Tente novamente.');
         } finally {
             setLoadingPix(false);
@@ -199,7 +206,7 @@ export default function FaturasScreen() {
         try {
             const fileName = `boleto_${selectedInvoice.id}_${Date.now()}.pdf`;
             const file = new ExpoFile(Paths.cache, fileName);
-            console.log('Saving boleto to:', file.uri);
+            logger.info('Saving boleto to:', file.uri);
 
             await file.write(base64Data, { encoding: 'base64' });
 
@@ -213,7 +220,7 @@ export default function FaturasScreen() {
                 Alert.alert('Erro', 'Compartilhamento não disponível.');
             }
         } catch (error) {
-            console.error('Error saving/sharing PDF:', error);
+            logger.error('Error saving/sharing PDF:', error);
             Alert.alert('Erro', 'Falha ao processar o arquivo PDF.');
         }
     };
@@ -229,7 +236,7 @@ export default function FaturasScreen() {
             const base64Pdf = await bffApi.getBoleto(selectedInvoice.id);
 
             if (base64Pdf) {
-                console.log('PDF received. Size:', base64Pdf.length);
+                logger.info('PDF received. Size:', base64Pdf.length);
 
                 // No Android, WebView não consegue renderizar PDF/Base64 local diretamente.
                 // Melhor prática é salvar e abrir com ação de visualização externa.
@@ -244,7 +251,7 @@ export default function FaturasScreen() {
                 Alert.alert('Indisponível', 'Não foi possível gerar o boleto para esta fatura.');
             }
         } catch (error) {
-            console.error('Error fetching boleto:', error);
+            logger.error('Error fetching boleto:', error);
             Alert.alert('Erro', 'Não foi possível carregar o boleto. Tente novamente.');
         } finally {
             setLoadingBoleto(false);
@@ -765,70 +772,16 @@ export default function FaturasScreen() {
             </Modal>
 
             {/* Modal Seletor de Contrato */}
-            <Modal
+            <ContractPickerModal
                 visible={showContractPicker}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowContractPicker(false)}
-            >
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl">
-                        <View className="p-5 border-b border-slate-100">
-                            <View className="flex-row justify-between items-center">
-                                <Text className="text-xl font-bold text-slate-800">Selecione o Contrato</Text>
-                                <TouchableOpacity onPress={() => setShowContractPicker(false)}>
-                                    <Ionicons name="close" size={24} color="#64748b" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                        <ScrollView className="max-h-80">
-                            {contracts.map((contract) => {
-                                const isSelected = contract.id === selectedContractId;
-                                return (
-                                    <TouchableOpacity
-                                        key={contract.id}
-                                        onPress={() => {
-                                            setSelectedContract(contract);
-                                            setShowContractPicker(false);
-                                        }}
-                                        className={`flex-row items-center p-4 border-b border-slate-100 ${isSelected ? 'bg-purple-50' : 'bg-white'
-                                            }`}
-                                    >
-                                        <View className={`w-10 h-10 rounded-xl items-center justify-center mr-3 ${isSelected ? 'bg-purple-600' : 'bg-slate-100'
-                                            }`}>
-                                            <Ionicons
-                                                name="document-text"
-                                                size={20}
-                                                color={isSelected ? 'white' : '#64748b'}
-                                            />
-                                        </View>
-                                        <View className="flex-1">
-                                            <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'
-                                                }`}>
-                                                {contract.contrato || contract.id}
-                                            </Text>
-                                            <Text className="text-slate-500 text-sm">
-                                                {contract.endereco || 'Internet'}
-                                            </Text>
-                                        </View>
-                                        {isSelected && (
-                                            <Ionicons name="checkmark-circle" size={24} color="#7c3aed" />
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                        <View className="p-5">
-                            <TouchableOpacity
-                                onPress={() => setShowContractPicker(false)}
-                                className="bg-slate-100 rounded-xl py-4 items-center"
-                            >
-                                <Text className="text-slate-600 font-semibold">Cancelar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+                contracts={contracts}
+                selectedContractId={selectedContractId}
+                onSelect={(contract) => {
+                    setSelectedContract(contract);
+                    setShowContractPicker(false);
+                }}
+                onClose={() => setShowContractPicker(false)}
+            />
         </View >
     );
 }

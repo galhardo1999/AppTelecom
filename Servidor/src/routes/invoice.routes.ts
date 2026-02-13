@@ -3,10 +3,10 @@
  */
 
 import { Hono } from 'hono';
-import { ixcService } from '../services/ixc.js';
+import { ixcService } from '../services/ixc/index.js';
 import { withErrorHandler } from '../middleware/errorHandler.js';
 import { cached } from '../services/cache.js';
-import type { JWTPayload, InvoiceHistoryResponse } from '../types/index.js';
+import type { JWTPayload, InvoiceHistoryResponse, IXCInvoice } from '../types/index.js';
 
 type Variables = {
     user: JWTPayload;
@@ -44,12 +44,12 @@ invoiceRoutes.get('/history', withErrorHandler(
 
         // Cache de 2 minutos para histórico
         const [openInvoices, paidInvoices] = await Promise.all([
-            cached(
+            cached<IXCInvoice[]>(
                 `invoices:all:${user.userId}`,
                 () => ixcService.getAllInvoices(user.userId),
                 120
             ),
-            cached(
+            cached<IXCInvoice[]>(
                 `invoices:paid:${user.userId}`,
                 () => ixcService.getPaidInvoices(user.userId),
                 120
@@ -57,8 +57,8 @@ invoiceRoutes.get('/history', withErrorHandler(
         ]);
 
         const grouped: InvoiceHistoryResponse = {
-            abertas: openInvoices.filter((inv: any) => inv.status_classificado === 'A'),
-            vencidas: openInvoices.filter((inv: any) => inv.status_classificado === 'V'),
+            abertas: openInvoices.filter((inv) => inv.status_classificado === 'A'),
+            vencidas: openInvoices.filter((inv) => inv.status_classificado === 'V'),
             pagas: paidInvoices,
             all: [...openInvoices, ...paidInvoices]
         };

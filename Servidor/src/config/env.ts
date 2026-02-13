@@ -23,6 +23,12 @@ export const PORT = parseInt(process.env.PORT || '3001', 10);
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Cielo (pagamentos recorrentes)
+export const CIELO_MERCHANT_ID = process.env.CIELO_MERCHANT_ID || '';
+export const CIELO_MERCHANT_KEY = process.env.CIELO_MERCHANT_KEY || '';
+export const CIELO_API_URL = process.env.CIELO_API_URL || 'https://api.cieloecommerce.cielo.com.br';
+export const CIELO_QUERY_API_URL = process.env.CIELO_QUERY_API_URL || 'https://apiquery.cieloecommerce.cielo.com.br';
+
 // Redis (opcional)
 export const REDIS_URL = process.env.REDIS_URL;
 export const UPSTASH_REDIS_URL = process.env.UPSTASH_REDIS_URL;

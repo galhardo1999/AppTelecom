@@ -3,11 +3,17 @@
 # dependencies
 node_modules/
 
+# lock file (usando npm como gerenciador principal)
+bun.lock
+
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+
+# NativeWind (gerado automaticamente)
+nativewind-env.d.ts
 
 # Native
 .kotlin/
@@ -21,10 +27,11 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
-# debug
+# debug / logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
 # macOS
 .DS_Store
@@ -33,9 +40,23 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+.env.development
+.env.production
 
 # typescript
 *.tsbuildinfo
+
+# cache
+.cache/
+.babel_cache/
+
+# test coverage
+coverage/
+
+# build artifacts
+*.apk
+*.aab
+*.ipa
 
 app-example
 

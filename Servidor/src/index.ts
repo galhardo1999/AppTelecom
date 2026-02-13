@@ -8,9 +8,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-// Tentar carregar serveStatic do Bun apenas em desenvolvimento local
+
 // Configuração
 import { PORT, ALLOWED_ORIGINS, isDevelopment } from './config/env.js';
+import { CITY_FOLDERS } from './config/cities.js';
 
 // Middleware
 import { authMiddleware } from './middleware/auth.js';
@@ -39,7 +40,7 @@ export const app = new Hono<{ Variables: Variables }>();
 // MIDDLEWARE GLOBAL
 // ==========================================
 
-// Tentar carregar serveStatic do Bun apenas em desenvolvimento local
+// Servir arquivos estáticos apenas em desenvolvimento (Bun)
 if (isDevelopment) {
     try {
         // @ts-ignore - Importação dinâmica para evitar erro de build no Node
@@ -60,7 +61,6 @@ app.use('*', globalErrorHandler);
 // CORS configurado de forma segura
 app.use('*', cors({
     origin: (origin) => {
-        // Em desenvolvimento ou se ALLOWED_ORIGINS não definido, permitir todas
         if (!ALLOWED_ORIGINS || ALLOWED_ORIGINS.length === 0) {
             if (!isDevelopment) {
                 console.warn('⚠️ CORS: Permitindo todas as origens em produção (configure ALLOWED_ORIGINS)');
@@ -68,19 +68,17 @@ app.use('*', cors({
             return origin;
         }
 
-        // Verificar se a origem está na lista
         if (ALLOWED_ORIGINS.includes(origin)) {
             return origin;
         }
 
-        // Bloquear origens não autorizadas
         return null;
     },
-    allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// HSTS (Strict-Transport-Security) para forçar HTTPS
+// Security Headers
 app.use('*', async (c, next) => {
     await next();
     c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
@@ -93,8 +91,8 @@ app.use('*', async (c, next) => {
 // LANDING PAGE
 // ==========================================
 
-const landingPageHTML = `
-<!DOCTYPE html>
+app.get('/', (c) => {
+    const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -102,16 +100,9 @@ const landingPageHTML = `
     <title>Apollo Telecom - App Oficial</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #a82ee6;
-            --secondary: #8e1cbd;
-            --dark: #0f172a;
-            --light: #ffffff;
-            --bg: #faf5ff;
-        }
+        :root { --primary: #a82ee6; --secondary: #8e1cbd; --dark: #0f172a; --light: #ffffff; --bg: #faf5ff; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { background: var(--bg); color: var(--dark); display: flex; flex-direction: column; min-height: 100vh; }
-        header { padding: 2rem; text-align: center; }
         .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; gap: 2rem; }
         h1 { font-size: 3rem; color: var(--dark); font-weight: 800; }
         p { color: #64748b; font-size: 1.2rem; max-width: 600px; line-height: 1.6; }
@@ -120,11 +111,8 @@ const landingPageHTML = `
         .btn:hover { transform: scale(1.05); filter: brightness(1.1); }
         .btn-google { background: #01875f; box-shadow: 0 4px 6px -1px rgba(1, 135, 95, 0.3); }
         .btn-apple { background: #000000; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
-        .footer { padding: 2rem; text-align: center; color: #475569; font-size: 0.9rem; width: 100%; display: flex; justify-content: center; align-items: center; }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .footer { padding: 2rem; text-align: center; color: #475569; font-size: 0.9rem; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .hero img { animation: fadeInUp 0.8s ease-out forwards; opacity: 0; }
         h1 { animation: fadeInUp 0.8s ease-out 0.2s forwards; opacity: 0; }
         p { animation: fadeInUp 0.8s ease-out 0.4s forwards; opacity: 0; }
@@ -151,37 +139,20 @@ const landingPageHTML = `
         <p>&copy; 2026 Apollo Telecom. Todos os direitos reservados.</p>
     </footer>
 </body>
-</html>
-`;
-
-app.get('/', (c) => c.html(landingPageHTML));
+</html>`;
+    return c.html(html);
+});
 
 // ==========================================
-// MAPEAMENTO DE CIDADES (rota pública)
+// ROTAS PÚBLICAS - CIDADES (imagens/banners)
 // ==========================================
-
-const CITY_FOLDERS: Record<string, string> = {
-    '3297': 'Aracatuba',
-    '3335': 'Bento de Abreu',
-    '3339': 'Birigui',
-    '3472': 'Guararapes',
-    '3664': 'Panorama',
-    '3675': 'Pauliceia',
-    '5571': 'Pauliceia',
-    '3731': 'Presidente Venceslau',
-    '3792': 'Santa Mercedes',
-};
 
 app.get('/cities/:cityId/images', async (c) => {
     const cityId = c.req.param('cityId');
     const folderName = CITY_FOLDERS[cityId];
 
     if (!folderName) {
-        return c.json({
-            cityId,
-            folder: null,
-            images: ['/public/cities/default.jpg']
-        });
+        return c.json({ cityId, folder: null, images: ['/public/cities/default.jpg'] });
     }
 
     try {
@@ -205,25 +176,16 @@ app.get('/cities/:cityId/images', async (c) => {
             images: images.length > 0 ? images : ['/public/cities/default.jpg']
         });
     } catch (error) {
-        return c.json({
-            cityId,
-            folder: folderName,
-            images: ['/public/cities/default.jpg']
-        });
+        return c.json({ cityId, folder: folderName, images: ['/public/cities/default.jpg'] });
     }
 });
 
-// Rota para buscar banners da pasta Banner de cada cidade
 app.get('/cities/:cityId/banners', async (c) => {
     const cityId = c.req.param('cityId');
     const folderName = CITY_FOLDERS[cityId];
 
     if (!folderName) {
-        return c.json({
-            cityId,
-            folder: null,
-            banners: []
-        });
+        return c.json({ cityId, folder: null, banners: [] });
     }
 
     try {
@@ -231,13 +193,8 @@ app.get('/cities/:cityId/banners', async (c) => {
         const path = await import('path');
         const bannerPath = path.join(process.cwd(), 'public', 'cities', folderName, 'Banner');
 
-        // Verificar se a pasta Banner existe
         if (!fs.existsSync(bannerPath)) {
-            return c.json({
-                cityId,
-                folder: folderName,
-                banners: []
-            });
+            return c.json({ cityId, folder: folderName, banners: [] });
         }
 
         const files = fs.readdirSync(bannerPath);
@@ -250,17 +207,9 @@ app.get('/cities/:cityId/banners', async (c) => {
             `${baseUrl}/${encodeURIComponent(folderName)}/Banner/${encodeURIComponent(file)}`
         );
 
-        return c.json({
-            cityId,
-            folder: folderName,
-            banners
-        });
+        return c.json({ cityId, folder: folderName, banners });
     } catch (error) {
-        return c.json({
-            cityId,
-            folder: folderName,
-            banners: []
-        });
+        return c.json({ cityId, folder: folderName, banners: [] });
     }
 });
 
@@ -274,57 +223,14 @@ app.route('/auth', authRoutes);
 // ROTAS PROTEGIDAS DA API
 // ==========================================
 
-// Aplicar middleware de rate limiter e auth para rotas protegidas
-// Nota: city-images e city-banners são rotas públicas, não precisam de auth
-app.use('/api/user/*', apiRateLimiter);
-app.use('/api/user/*', authMiddleware);
-app.use('/api/invoices/*', apiRateLimiter);
-app.use('/api/invoices/*', authMiddleware);
-app.use('/api/contracts/*', apiRateLimiter);
-app.use('/api/contracts/*', authMiddleware);
-app.use('/api/usage', apiRateLimiter);
-app.use('/api/usage', authMiddleware);
-app.use('/api/contract/*', apiRateLimiter);
-app.use('/api/contract/*', authMiddleware);
+// Middleware de rate limiter + auth para TODAS as rotas /api/*
+app.use('/api/*', apiRateLimiter);
+app.use('/api/*', authMiddleware);
 
 // Montar rotas protegidas
 app.route('/api/user', userRoutes);
 app.route('/api/invoices', invoiceRoutes);
 app.route('/api/contracts', contractRoutes);
-
-// Rota de consumo (mantida aqui por compatibilidade com path existente)
-app.get('/api/usage', async (c) => {
-    const user = c.get('user') as JWTPayload;
-    const { ixcService } = await import('./services/ixc.js');
-    const { cached } = await import('./services/cache.js');
-
-    const usage = await cached(
-        `usage:${user.userId}`,
-        () => ixcService.getInternetUsage(user.userId),
-        60
-    );
-
-    return c.json(usage);
-});
-
-// Rota de contrato PDF (mantida para compatibilidade)
-app.post('/api/contract/:contractId', async (c) => {
-    const contractId = c.req.param('contractId');
-    const { ixcService } = await import('./services/ixc.js');
-    const { cached } = await import('./services/cache.js');
-
-    const base64Pdf = await cached(
-        `contract-pdf:${contractId}`,
-        () => ixcService.getContractPdf(contractId),
-        3600
-    );
-
-    if (!base64Pdf) {
-        return c.json({ error: 'Contrato PDF não disponível' }, 404);
-    }
-
-    return c.json({ base64: base64Pdf });
-});
 
 // ==========================================
 // HEALTH CHECK
