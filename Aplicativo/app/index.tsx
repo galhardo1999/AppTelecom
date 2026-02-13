@@ -21,6 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertType, CustomAlert } from '../src/components/CustomAlert';
 import { useAuth } from '../src/context/AuthContext';
 import { getBiometryIcon, getBiometryLabel, useBiometrics } from '../src/hooks/useBiometrics';
+import { authApi } from '../src/services/api';
 import { logger } from '../src/utils/logger';
 
 // Componente de imagem animado
@@ -160,20 +161,7 @@ export default function LoginScreen() {
         setAlertVisible(true);
     };
 
-    const handleLogin = async () => {
-        if (!email) {
-            showAlert('Atenção', 'Por favor, preencha o campo usuario.', 'warning');
-            return;
-        }
-        if (!password) {
-            showAlert('Atenção', 'Por favor, preencha o campo senha.', 'warning');
-            return;
-        }
-        if (!email || !password) {
-            showAlert('Atenção', 'Por favor, preencha todos os campos.', 'warning');
-            return;
-        }
-
+    const performSignIn = async () => {
         setLoading(true);
         try {
             await signIn(email, password);
@@ -183,12 +171,6 @@ export default function LoginScreen() {
             } else {
                 await SecureStore.deleteItemAsync('saved_email');
             }
-
-            // Após login bem-sucedido, sugerir ativar biometria se suportado mas não ativado
-            if (isSupported && !isEnabled) {
-                setShowBiometricPrompt(true);
-            }
-
         } catch (error: any) {
             const isBlocked = error.message?.toLowerCase().includes('bloqueado');
 
@@ -207,6 +189,55 @@ export default function LoginScreen() {
         }
     };
 
+    const handleLogin = async () => {
+        if (!email) {
+            showAlert('Atenção', 'Por favor, preencha o campo usuario.', 'warning');
+            return;
+        }
+        if (!password) {
+            showAlert('Atenção', 'Por favor, preencha o campo senha.', 'warning');
+            return;
+        }
+        if (!email || !password) {
+            showAlert('Atenção', 'Por favor, preencha todos os campos.', 'warning');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // 1. Validar credenciais primeiro (sem logar no contexto ainda)
+            await authApi.login(email, password);
+
+            // 2. Se login ok, verificar se pode oferecer biometria
+            if (isSupported && !isEnabled) {
+                setLoading(false); // Parar loading para mostrar o modal
+                setShowBiometricPrompt(true);
+                return; // Interromper fluxo para aguardar interação do usuário
+            }
+
+            // 3. Se não precisa de biometria, seguir para login (que redireciona)
+            await performSignIn();
+
+        } catch (error: any) {
+            setLoading(false);
+            const isBlocked = error.response?.data?.error?.toLowerCase().includes('bloqueado') ||
+                error.message?.toLowerCase().includes('bloqueado');
+
+            if (isBlocked) {
+                showAlert(
+                    'Falha no Acesso',
+                    'No momento, o acesso à sua conta não está disponível. Para sua segurança, pedimos que entre em contato com nosso suporte técnico para regularizar a situação.',
+                    'error',
+                    true
+                );
+            } else {
+                // Tenta extrair mensagem de erro da resposta ou usa genérica
+                const message = error.response?.data?.error || error.message || 'Falha na autenticação';
+                showAlert('Erro de Acesso', message, 'error');
+            }
+        }
+    };
+
     const handleEnableBiometrics = async () => {
         const success = await enableBiometrics(email, password);
         if (success) {
@@ -217,6 +248,13 @@ export default function LoginScreen() {
             );
         }
         setShowBiometricPrompt(false);
+        // Prosseguir para o login oficial após ativar (ou falhar)
+        await performSignIn();
+    };
+
+    const handleSkipBiometrics = async () => {
+        setShowBiometricPrompt(false);
+        await performSignIn();
     };
 
     const handlePhoneSupport = () => {
@@ -396,7 +434,7 @@ export default function LoginScreen() {
                                 <View className="flex-row space-x-3">
                                     <TouchableOpacity
                                         className="flex-1 bg-white rounded-lg py-2 border border-purple-300"
-                                        onPress={() => setShowBiometricPrompt(false)}
+                                        onPress={handleSkipBiometrics}
                                     >
                                         <Text className="text-purple-600 text-center font-medium">Depois</Text>
                                     </TouchableOpacity>

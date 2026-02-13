@@ -1,70 +1,208 @@
-Aja como um Desenvolvedor Senior em React Native e Expo. Eu preciso criar um aplicativo móvel para provedores de internet (ISP) que utiliza a API do ERP IXC Soft.
+# PRD — Apollo Telecom App (Mobile)
 
-Objetivo do Projeto: Criar um aplicativo de consulta para clientes finais. O aplicativo não terá cadastro (sign-up); apenas login. O login deve validar as credenciais do usuário comparando com os dados existentes no banco de dados do IXC via API.
+> Documento atualizado em 13/02/2026, refletindo o estado atual do projeto.
 
-Stack Tecnológico:
+## 1. Visão Geral
 
-Framework: React Native com Expo (Managed Workflow).
+Aplicativo móvel para clientes finais de provedores de internet (ISP) que utilizam o ERP IXC Soft. O app permite ao cliente consultar faturas, planos, realizar pagamentos (PIX, boleto) e gerenciar cobrança recorrente por cartão de crédito.
 
-Linguagem: TypeScript.
+**Não possui cadastro (sign-up)** — apenas login com credenciais existentes no IXC.
 
-Estilização: NativeWind (TailwindCSS) ou StyleSheet padrão (prefira um design limpo e moderno).
+---
 
-Gerenciamento de Estado: Context API ou Zustand.
+## 2. Stack Tecnológico
 
-HTTP Client: Axios.
+| Camada | Tecnologia |
+|---|---|
+| Framework | React Native + Expo (Managed Workflow, SDK 54) |
+| Linguagem | TypeScript |
+| Estilização | NativeWind (TailwindCSS para RN) |
+| Navegação | Expo Router + Material Top Tabs (swipe entre abas) |
+| Estado Global | Context API (`AuthContext`, `ContractContext`) |
+| Fetching/Cache | React Query (`@tanstack/react-query`) |
+| HTTP Client | Axios (conectando ao BFF) |
+| Auth Storage | `expo-secure-store` (JWT + credenciais biométricas) |
+| Animações | `react-native-reanimated` |
 
-Navegação: Expo Router ou React Navigation.
+---
 
-Requisitos Funcionais:
+## 3. Arquitetura
 
-Tela de Login:
+```
+┌─────────────┐      HTTPS/JWT       ┌──────────────┐      API IXC       ┌──────────┐
+│  App Mobile  │  ──────────────────▶ │  BFF (Vercel) │ ──────────────▶   │  IXC Soft │
+│  (Expo/RN)   │  ◀────────────────── │  Node.js API  │ ◀──────────────   │   ERP     │
+└─────────────┘                       └──────────────┘                    └──────────┘
+                                            │
+                                            ▼
+                                      ┌──────────┐
+                                      │  Cielo    │
+                                      │ (Braspag) │
+                                      └──────────┘
+```
 
-Campos: Email e Senha.
+O app **nunca** se conecta diretamente ao IXC. Toda comunicação passa pelo BFF (Backend For Frontend), que:
+- Gerencia credenciais sensíveis do IXC (token de admin)
+- Implementa autenticação JWT para o app
+- Faz proxy seguro de todas as chamadas
+- Integra com Cielo/Braspag para tokenização de cartões
 
-A lógica de autenticação deve consultar a API do IXC.
+---
 
-Deve buscar na tabela de clientes (cliente) filtrando pelo campo hotsite_email.
+## 4. Telas e Funcionalidades
 
-Se encontrar o cliente, verificar se a senha confere (obs: simule a lógica de verificação de senha baseada no retorno da API ou hash MD5 se necessário, conforme padrão do IXC).
+### 4.1 Login (`app/index.tsx`) ✅
+- Email + Senha com validação via BFF/IXC
+- **Biometria** (Face ID / TouchID) via `useBiometrics` hook
+- Lembrar email no dispositivo
+- Animações de teclado (logo shrink, conteúdo sobe)
+- Modal de recuperação de senha
+- Alertas customizados (`CustomAlert`)
 
-Armazenar o token de sessão ou dados do usuário no AsyncStorage ou SecureStore.
+### 4.2 Dashboard — 5 abas com swipe (`app/dashboard/`)
 
-Dashboard (Home):
+#### Home (`index.tsx`) ✅
+- Saudação com nome do cliente
+- Seleção de contrato (quando há múltiplos)
+- Resumo da última fatura (valor, vencimento, status)
+- Ações rápidas: copiar PIX, ver boleto, 2ª via
+- Alerta de faturas vencidas
+- Banner de anúncios regionais (`AdBanner`)
+- Modal promocional por cidade (`PromotionalModal`)
 
-Após o login, mostrar uma tela de "Boas-vindas" com o nome do cliente recuperado da API.
+#### Faturas (`faturas.tsx`) ✅
+- 3 abas: Vencidas, Abertas, Pagas (com contadores)
+- Seleção de contrato (múltiplos)
+- Copiar código PIX / linha digitável
+- Gerar e compartilhar boleto em PDF
+- Download/salvamento de boletos
+- WebView para visualização de PDFs
 
-Esta tela servirá apenas para consulta de informações (ex: exibir o ID do cliente, Status da conexão, Plano contratado). Por enquanto, crie apenas os placeholders para esses dados.
+#### Planos (`planos.tsx`) ✅
+- Detalhes do contrato: plano, titular, data de ativação, endereço
+- Status do contrato com badges coloridos (Ativo, Bloqueado, Cancelado)
+- Download do contrato em PDF
+- Seleção entre múltiplos contratos
 
-Integração com API IXC:
+#### Suporte (`suporte.tsx`) ✅
+- Canais de atendimento: WhatsApp, Telefone
+- FAQ com passos detalhados
+- Mensagens pré-definidas para WhatsApp
 
-Base URL e Token de API estarão no arquivo .env.
+#### Perfil (`perfil.tsx`) ✅
+- Dados do usuário (com mascaramento LGPD: email, CPF)
+- Links para Meu Plano, Pagamento Recorrente, Central de Ajuda
+- Seção de Pendências (documentos a assinar)
+- Logout com confirmação
 
-Crie um serviço dedicado (api.ts) configurado com Axios.
+### 4.3 Pagamento Recorrente (`app/recorrencia/`)
 
-A autenticação na API do IXC geralmente usa Basic Auth ou um Token no Header. O app deve usar as credenciais globais do sistema (do .env) para fazer as consultas, mas o acesso do usuário final é validado contra os dados retornados.
+#### Detalhes (`index.tsx`) ✅
+- Visualização do cartão cadastrado (preview premium com gradiente da bandeira)
+- Status: Ativa vs. Inativa
+- Botão de remover cartão com confirmação
+- Botão de cadastrar cartão (se não tiver)
 
-Arquivos de Referência:
+#### Cadastro (`cadastro.tsx`) ✅
+- Formulário: nome, número do cartão, validade, CVC
+- Detecção automática de bandeira (Visa, Mastercard, Elo, Amex)
+- Preview do cartão em tempo real com gradiente da bandeira
+- Validação completa do formulário
+- Tokenização via Cielo/Braspag (backend)
 
-As credenciais e documentação básica de como conectar estão nos seguintes arquivos:
+---
 
-Conteúdo do arquivo .env:
+## 5. Segurança Implementada
 
-[COLE AQUI O CONTEÚDO DO SEU .ENV]
-Conteúdo do arquivo ixccliente.md (ou documentação relevante):
+| Medida | Status | Detalhe |
+|---|---|---|
+| BFF Proxy | ✅ | App nunca acessa IXC diretamente |
+| JWT + SecureStore | ✅ | Token armazenado em keychain/keystore nativo |
+| Interceptador 401 | ✅ | Logout automático em token expirado |
+| Logger de Produção | ✅ | Suprime logs em prod, sanitiza dados sensíveis |
+| Screen Security | ✅ | Previne screenshots em telas financeiras |
+| LGPD Masking | ✅ | Email e CPF parcialmente ocultos no perfil |
+| Zero console.log | ✅ | Nenhum dado sensível exposto em logs |
 
-[COLE AQUI O CONTEÚDO DO SEU ARQUIVO IXCCLIENTE.MD]
-Instruções de Saída: Gere a estrutura do projeto, a configuração do axios para a API do IXC, o Contexto de Autenticação (AuthContext) lidando com a lógica de hotsite_email, e as telas de Login e Dashboard.
+---
 
-⚠️ Pontos de Atenção Críticos (Leia antes de prosseguir)
-Como seu "Thought Partner", preciso alertar sobre alguns riscos técnicos nessa abordagem:
+## 6. Endpoints do BFF (API)
 
-Segurança das Credenciais (Risco Alto): Você mencionou que as credenciais da API estarão no .env do App.
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/auth/login` | Autenticação (email + senha) |
+| GET | `/api/user` | Dados do usuário |
+| GET | `/api/invoices` | Faturas em aberto |
+| GET | `/api/invoices/history` | Histórico completo de faturas |
+| POST | `/api/invoices/pix/:id` | Gerar código PIX |
+| POST | `/api/invoices/boleto/:id` | Gerar boleto PDF (base64) |
+| GET | `/api/contracts` | Contratos do cliente |
+| POST | `/api/contracts/:id` | Download contrato PDF (base64) |
+| GET | `/api/contracts/usage` | Consumo de internet |
+| PUT | `/api/contracts/:id/recurring-card` | Cadastrar cartão recorrente |
+| DELETE | `/api/contracts/:id/recurring-card` | Remover cartão recorrente |
 
-O Problema: Em React Native, tudo o que está no .env é "buildado" junto com o app. Se alguém baixar seu app e fizer engenharia reversa, poderá extrair o Token de Admin do seu IXC. Isso daria acesso total ao seu provedor para qualquer pessoa mal-intencionada.
+---
 
-A Solução Correta: O ideal é criar um "Middleware" (um pequeno backend em Node.js ou PHP). O App chama esse seu backend, e o seu backend (que é seguro) chama o IXC. O App nunca deve ter a senha mestra do IXC.
+## 7. Estrutura do Projeto
 
-CORS e Conexão Direta: A API do IXC Soft muitas vezes bloqueia requisições vindas diretamente de navegadores ou apps móveis por motivos de segurança (CORS). Você pode ter problemas de conexão Network Error se tentar chamar o IXC direto do celular sem um proxy.
+```
+app/
+├── _layout.tsx              # Root layout (providers, auth redirect)
+├── index.tsx                # Tela de Login
+├── dashboard/
+│   ├── _layout.tsx          # Tab layout (Material Top Tabs)
+│   ├── index.tsx            # Home
+│   ├── faturas.tsx          # Faturas
+│   ├── planos.tsx           # Planos/Contratos
+│   ├── suporte.tsx          # Suporte/FAQ
+│   └── perfil.tsx           # Perfil
+└── recorrencia/
+    ├── _layout.tsx          # Stack layout
+    ├── index.tsx            # Detalhes do cartão
+    └── cadastro.tsx         # Cadastro de cartão
 
-Senha do IXC: O IXC geralmente armazena senhas em hash (MD5 ou similar). Ao buscar o usuário pelo hotsite_email, a API vai retornar a senha criptografada. O seu app terá que criptografar o que o usuário digitou e comparar com o que veio da API. Peça para a IA incluir uma função de hash (ex: crypto-js) se a API não tiver uma rota de /login nativa pronta para uso.
+src/
+├── components/
+│   ├── AdBanner.tsx         # Banner rotativo de anúncios
+│   ├── ContractPickerModal.tsx  # Modal de seleção de contrato (shared)
+│   ├── CreditCardPreview.tsx    # Preview premium de cartão (shared)
+│   ├── CustomAlert.tsx      # Modal de alerta customizado
+│   ├── DashboardTabBar.tsx  # TabBar customizada
+│   ├── GradientHeader.tsx   # Header gradiente padrão (shared)
+│   ├── PromotionalModal.tsx # Modal de promoções por cidade
+│   ├── Skeleton.tsx         # Componentes de loading skeleton
+│   └── StateComponents.tsx  # Error/Empty/Loading states
+├── context/
+│   ├── AuthContext.tsx      # Autenticação + sessão
+│   └── ContractContext.tsx  # Gerenciamento de contratos
+├── hooks/
+│   ├── useBiometrics.ts     # Face ID / TouchID
+│   ├── useMutations.ts      # React Query mutations (PIX, boleto, cartão)
+│   ├── useQueries.ts        # React Query queries (faturas, contratos)
+│   └── useScreenSecurity.ts # Prevenção de screenshots
+├── services/
+│   └── api.ts               # Axios + interceptadores + endpoints BFF
+├── types/
+│   └── ixc.ts               # Types: Invoice, Contract, RadUsuario
+└── utils/
+    ├── cardUtils.ts          # Detecção/formatação de bandeiras (shared)
+    ├── cityImages.ts         # Mapeamento de imagens por cidade
+    ├── formatters.ts         # Formatadores (moeda, data, nome, CPF)
+    ├── logger.ts             # Logger seguro para produção
+    ├── maskUtils.ts          # Mascaramento LGPD (email, CPF, CNPJ)
+    └── toast.ts              # Toast cross-platform
+```
+
+---
+
+## 8. Melhorias Futuras (Backlog)
+
+- [ ] **Refatorar `faturas.tsx`** (~780 linhas) — dividir em sub-componentes
+- [ ] **Refatorar `index.tsx` Login** (~515 linhas) — extrair modais e lógica
+- [ ] **Notificações push** — alertas de faturas vencidas
+- [ ] **Modo offline** — cache local de dados com React Query persistence
+- [ ] **Tela de consumo** — gráficos de uso de internet (dados já disponíveis no BFF)
+- [ ] **Dark mode** — suporte a tema escuro
+- [ ] **Assinatura digital** — integração com DocuSign ou similar para pendências
+- [ ] **Testes automatizados** — Jest + React Native Testing Library
