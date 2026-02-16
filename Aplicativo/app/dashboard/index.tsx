@@ -218,7 +218,7 @@ export default function HomeScreen() {
                 <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
                     {/* Top Bar */}
                     <View className="flex-row justify-between items-center py-2">
-                        <View className="bg-white/20 p-2 rounded-xl">
+                        <View className=" p-2 rounded-xl">
                             <Image
                                 source={require('../../assets/logo.png')}
                                 style={{ width: 120, height: 50 }}
@@ -255,7 +255,7 @@ export default function HomeScreen() {
                         className="bg-white rounded-3xl p-5 shadow-sm mb-6 border border-slate-100"
                         style={{ shadowColor: '#581c87', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 }}
                     >
-                        <View className="flex-row justify-between items-start">
+                        <View className="flex-row justify-between items-center">
                             <View className="flex-1 mr-4">
                                 {/* Status Badge */}
                                 <View className="flex-row items-center mb-2">
