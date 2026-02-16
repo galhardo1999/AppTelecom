@@ -67,14 +67,7 @@ export default function PerfilScreen() {
             bgColor: 'bg-cyan-100',
             onPress: () => router.push('/dashboard/planos'),
         },
-        {
-            title: 'Pagamento Recorrente',
-            subtitle: 'Cadastrar cartão de crédito',
-            icon: 'card-outline',
-            iconColor: '#7c3aed',
-            bgColor: 'bg-purple-100',
-            onPress: () => router.push('/recorrencia' as any),
-        },
+
     ];
 
     const supportItems: MenuItem[] = [

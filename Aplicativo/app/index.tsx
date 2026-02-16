@@ -511,7 +511,7 @@ export default function LoginScreen() {
 
                         <View className="bg-slate-50 rounded-xl p-4 mb-6">
                             <View className="flex-row items-start mb-3">
-                                e                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
+                                <View className="w-6 h-6 bg-purple-600 rounded-full items-center justify-center mr-3 mt-0.5">
                                     <Text className="text-white font-bold text-xs">1</Text>
                                 </View>
                                 <Text className="flex-1 text-slate-700 text-sm">
