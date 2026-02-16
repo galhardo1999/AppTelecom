@@ -2,7 +2,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,27 @@ import { formatCurrency, formatDateShort, formatFullName } from '../../src/utils
 export default function HomeScreen() {
     const router = useRouter();
     const { user, signOut } = useAuth();
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    // Estado para controlar visibilidade das setas
+    const [showLeftArrow, setShowLeftArrow] = useState(false);
+    const [showRightArrow, setShowRightArrow] = useState(true);
+    const [dimensions, setDimensions] = useState({ contentWidth: 0, containerWidth: 0 });
+
+    const handleScroll = (event: any) => {
+        const offsetX = event.nativeEvent.contentOffset.x;
+        const { contentWidth, containerWidth } = dimensions;
+
+        // Se o conteúdo for menor que a tela, esconde tudo
+        if (contentWidth <= containerWidth) {
+            setShowLeftArrow(false);
+            setShowRightArrow(false);
+            return;
+        }
+
+        setShowLeftArrow(offsetX > 5); // Margem de tolerância
+        setShowRightArrow(offsetX + containerWidth < contentWidth - 5);
+    };
     const {
         contracts,
         selectedContract,
@@ -29,8 +50,7 @@ export default function HomeScreen() {
     const fullName = formatFullName(user?.razao);
 
     // Estados para controlar o fluxo: seleção de contrato -> promo modal -> dashboard
-    const [showPromo, setShowPromo] = useState(false);
-    const [showContractPicker, setShowContractPicker] = useState(false);
+    const [showPromo, setShowPromo] = useState(false); const [showContractPicker, setShowContractPicker] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false); // Estado de transição
 
     // Mostrar tela de seleção quando: contratos carregaram, tem mais de 1, e usuário não escolheu ainda
@@ -77,9 +97,10 @@ export default function HomeScreen() {
 
     const quickActions = [
         { title: 'Faturas', icon: 'receipt-outline' as const, color: '#a855f7', route: '/dashboard/faturas' },
-        { title: 'Meu Plano', icon: 'wifi-outline' as const, color: '#3b82f6', route: '/dashboard/planos' },
-        { title: 'Suporte', icon: 'headset-outline' as const, color: '#22c55e', route: '/dashboard/suporte' },
-        { title: 'Perfil', icon: 'person-outline' as const, color: '#f59e0b', route: '/dashboard/perfil' },
+        { title: 'Teste de Velocidade', icon: 'speedometer-outline' as const, color: '#a855f7', route: '/dashboard/velocidade' },
+        { title: 'Recorrência', icon: 'card-outline' as const, color: '#a855f7', route: '/recorrencia' },
+        { title: 'Suporte', icon: 'headset-outline' as const, color: '#a855f7', route: '/dashboard/suporte' },
+        { title: 'Meus Dados', icon: 'person-outline' as const, color: '#a855f7', route: '/dashboard/perfil' },
     ];
 
     // Verificar se há faturas vencidas para o contrato selecionado
@@ -119,7 +140,7 @@ export default function HomeScreen() {
                     >
                         <Image
                             source={require('../../assets/logo.png')}
-                            style={{ width: 120, height: 50 }}
+                            style={{ width: 180, height: 100 }}
                             resizeMode="contain"
                         />
                         <TouchableOpacity
@@ -200,56 +221,69 @@ export default function HomeScreen() {
                         <View className="bg-white/20 p-2 rounded-xl">
                             <Image
                                 source={require('../../assets/logo.png')}
-                                style={{ width: 80, height: 30 }}
+                                style={{ width: 120, height: 50 }}
                                 resizeMode="contain"
                                 tintColor="white"
                             />
                         </View>
+
                         <TouchableOpacity onPress={() => router.push('/dashboard/perfil')}>
                             <View className="w-10 h-10 bg-white/30 rounded-full items-center justify-center">
                                 <Ionicons name="person" size={20} color="white" />
                             </View>
                         </TouchableOpacity>
+
                     </View>
 
                     {/* Saudação */}
                     <View className="mt-4">
-                        <Text className="text-white/80 text-base">Olá,</Text>
+                        <Text className="text-white/95 text-base">Olá, seja bem-vindo(a)</Text>
                         <Text className="text-white text-2xl font-bold">{fullName}</Text>
                     </View>
                 </SafeAreaView>
             </View>
 
-            <ScrollView className="flex-1 -mt-12 px-6" showsVerticalScrollIndicator={false}>
-                {/* Card de Status do Plano */}
+            <ScrollView className="flex-1 -mt-16 px-6" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+
+
+
+                {/* Card Principal do Contrato */}
                 {selectedContract && (
                     <TouchableOpacity
+                        activeOpacity={0.9}
                         onPress={() => contracts.length > 1 ? setShowContractPicker(true) : router.push('/dashboard/planos')}
-                        className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-slate-100"
+                        className="bg-white rounded-3xl p-5 shadow-sm mb-6 border border-slate-100"
+                        style={{ shadowColor: '#581c87', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 }}
                     >
-                        <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center flex-1">
-                                <View className="w-12 h-12 bg-purple-100 rounded-xl items-center justify-center mr-3">
-                                    <Ionicons name="wifi" size={24} color="#7c3aed" />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-slate-500 text-xs uppercase tracking-wide">
-                                        {selectedContract.contrato || selectedContract.id}
+                        <View className="flex-row justify-between items-start">
+                            <View className="flex-1 mr-4">
+                                {/* Status Badge */}
+                                <View className="flex-row items-center mb-2">
+                                    <View className={`w-2 h-2 rounded-full mr-2 ${selectedContract.status === 'A' ? 'bg-green-500' : 'bg-red-500'}`} />
+                                    <Text className="text-slate-500 text-xs font-medium uppercase tracking-wider">
+                                        Contrato #{selectedContract.id}
                                     </Text>
                                 </View>
+
+                                {/* Nome do Plano */}
+                                <Text className="text-slate-800 text-xl font-bold mb-1 leading-tight">
+                                    {selectedContract.contrato || 'Plano de Internet'}
+                                </Text>
+
+                                {/* Endereço */}
+                                <Text className="text-slate-500 text-sm leading-5" numberOfLines={2}>
+                                    {selectedContract.endereco}, {selectedContract.numero}
+                                    {selectedContract.bairro ? ` - ${selectedContract.bairro}` : ''}
+                                </Text>
                             </View>
-                            <View className="flex-row items-center">
-                                <View className="bg-green-100 px-2 py-1 rounded-full flex-row items-center">
-                                    <View className="w-2 h-2 bg-green-500 rounded-full mr-1" />
-                                    <Text className="text-green-700 text-xs font-semibold">Ativo</Text>
-                                </View>
-                                <View className="ml-2">
-                                    <Ionicons
-                                        name={contracts.length > 1 ? "chevron-down" : "chevron-forward"}
-                                        size={20}
-                                        color="#cbd5e1"
-                                    />
-                                </View>
+
+                            {/* Ícone de Ação */}
+                            <View className="bg-purple-50 p-3 rounded-2xl">
+                                <Ionicons
+                                    name={contracts.length > 1 ? "swap-horizontal" : "wifi"}
+                                    size={24}
+                                    color="#7c3aed"
+                                />
                             </View>
                         </View>
                     </TouchableOpacity>
@@ -303,30 +337,74 @@ export default function HomeScreen() {
 
                 {/* Ações Rápidas - Círculos em linha */}
                 <Text className="text-slate-800 text-lg font-bold mb-4">Acesso Rápido</Text>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="mb-6"
-                    contentContainerStyle={{ paddingRight: 16 }}
-                >
-                    {quickActions.map((action, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            className="items-center mr-5"
-                            onPress={() => router.push(action.route as any)}
-                        >
-                            <View
-                                className="w-16 h-16 rounded-2xl items-center justify-center mb-2 shadow-sm"
-                                style={{ backgroundColor: '#a855f7' }}
+                <View className="flex-row items-center justify-between mb-6">
+                    {/* Seta Esquerda */}
+                    <View className="w-6 items-center justify-center">
+                        {showLeftArrow && (
+                            <TouchableOpacity
+                                onPress={() => scrollViewRef.current?.scrollTo({ x: 0, animated: true })}
+                                className="p-1 -ml-1"
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >
-                                <Ionicons name={action.icon} size={28} color="white" />
-                            </View>
-                            <Text className="text-slate-700 font-medium text-xs text-center" style={{ maxWidth: 70 }}>
-                                {action.title}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                                <Ionicons name="chevron-back" size={16} color="#64748b" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <ScrollView
+                        ref={scrollViewRef}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        className="flex-1 mx-2"
+                        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center' }}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
+                        onContentSizeChange={(w) => setDimensions(prev => {
+                            const newDims = { ...prev, contentWidth: w };
+                            setShowRightArrow(w > prev.containerWidth);
+                            return newDims;
+                        })}
+                        onLayout={(e) => {
+                            const width = e.nativeEvent.layout.width;
+                            setDimensions(prev => {
+                                const newDims = { ...prev, containerWidth: width };
+                                setShowRightArrow(prev.contentWidth > width);
+                                return newDims;
+                            });
+                        }}
+                    >
+                        {quickActions.map((action, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                className={`items-center ${index === quickActions.length - 1 ? '' : 'mr-5'}`}
+                                onPress={() => router.push(action.route as any)}
+                            >
+                                <View
+                                    className="w-[60px] h-[60px] rounded-2xl items-center justify-center mb-2 shadow-sm"
+                                    style={{ backgroundColor: action.color || '#a855f7' }}
+                                >
+                                    <Ionicons name={action.icon} size={28} color="white" />
+                                </View>
+                                <Text className="text-slate-700 font-medium text-xs text-center" style={{ maxWidth: 70 }}>
+                                    {action.title}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    {/* Seta Direita */}
+                    <View className="w-6 items-center justify-center">
+                        {showRightArrow && (
+                            <TouchableOpacity
+                                onPress={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                                className="p-1 -mr-1"
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons name="chevron-forward" size={16} color="#64748b" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
 
                 {/* Seção Novidades */}
                 <Text className="text-slate-800 text-lg font-bold mb-3">Novidades</Text>
