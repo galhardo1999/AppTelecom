@@ -366,8 +366,11 @@ export default function FaturasScreen() {
                             <View className="flex-row items-center flex-1 mr-2">
                                 <Ionicons name="document-text-outline" size={20} color="white" />
                                 <Text className="text-white font-semibold ml-2" numberOfLines={1}>
-                                    {contracts.find(c => c.id === selectedContractId)?.descricao_aux_plano_venda ||
-                                        `${contracts.find(c => c.id === selectedContractId)?.contrato || selectedContractId}`}
+                                    {(() => {
+                                        const contract = contracts.find(c => c.id === selectedContractId);
+                                        if (!contract) return 'Selecionar Contrato';
+                                        return `${contract.id} - ${contract.contrato || contract.plano_nome || 'Plano não informado'}`;
+                                    })()}
                                 </Text>
                             </View>
                             <Ionicons name="chevron-down" size={20} color="white" />

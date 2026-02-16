@@ -77,19 +77,16 @@ export function ContractPickerModal({
                                         />
                                     </View>
                                     <View className="flex-1">
-                                        <View className="flex-row items-center">
+                                        <View className="flex-row items-center flex-wrap mr-2">
                                             <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>
-                                                Contrato #{contract.id}
+                                                {contract.id} - {contract.contrato}
                                             </Text>
-                                            <View className={`flex-row items-center px-2 py-0.5 rounded-full ml-2 ${statusInfo.color}`}>
-                                                <View className={`w-1.5 h-1.5 rounded-full mr-1 ${statusInfo.dotColor}`} />
-                                                <Text className={`text-xs font-semibold ${statusInfo.textColor}`}>
-                                                    {statusInfo.label}
-                                                </Text>
-                                            </View>
+
                                         </View>
-                                        <Text className="text-slate-500 text-sm mt-1" numberOfLines={1}>
-                                            {contract.endereco ? `${contract.endereco}, ${contract.numero || 'S/N'}` : 'Endereço não disponível'}
+                                        <Text className="text-slate-500 text-sm mt-1" numberOfLines={2}>
+                                            {contract.endereco ?
+                                                `${contract.endereco}, ${contract.numero || 'S/N'} - ${contract.bairro || ''}, ${contract.cidade}`
+                                                : 'Endereço não disponível'}
                                         </Text>
                                     </View>
                                     {isSelected && (
