@@ -7,6 +7,11 @@
     "icon": "./assets/iconeaplicativo.png",
     "scheme": "apollo-telecom",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "jsEngine": "hermes",
     "newArchEnabled": true,
     "ios": {

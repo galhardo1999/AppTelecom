@@ -1,20 +1,25 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, Image, View, LogBox } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, LogBox, View } from 'react-native';
 import '../global.css'; // Importar estilos globais do NativeWind
-
-// Ignorar aviso de depreciação do SafeAreaView (vem de bibliotecas terceiras)
-LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ContractProvider } from '../src/context/ContractContext';
 import { queryClient } from '../src/lib/queryClient';
+
+// Ignorar aviso de depreciação do SafeAreaView (vem de bibliotecas terceiras)
+LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
 
 // Componente separado para lidar com lógica de navegação dentro do Provider
 function RootNavigator() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [isSplashAnimationFinished, setIsSplashAnimationFinished] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -30,7 +35,22 @@ function RootNavigator() {
     }
   }, [user, isLoading, segments]);
 
-  if (isLoading) {
+  useEffect(() => {
+    // Garantir que a splash screen fique visível por pelo menos 2.5 segundos
+    const timer = setTimeout(() => {
+      setIsSplashAnimationFinished(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isSplashAnimationFinished && !isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [isSplashAnimationFinished, isLoading]);
+
+  if (isLoading || !isSplashAnimationFinished) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <View className="flex-1 justify-center items-center">
@@ -52,6 +72,14 @@ function RootNavigator() {
       <Stack.Screen name="index" />
       <Stack.Screen name="dashboard" />
       <Stack.Screen name="recorrencia" />
+      <Stack.Screen
+        name="velocidade"
+        options={{
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom',
+          headerShown: false
+        }}
+      />
     </Stack>
   );
 }

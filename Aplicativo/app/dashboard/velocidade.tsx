@@ -23,7 +23,7 @@ export default function SpeedTestScreen() {
                 <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 px-6">
                     <View className="flex-row items-center justify-between py-2">
                         <TouchableOpacity
-                            onPress={() => router.replace('/dashboard')}
+                            onPress={() => router.back()}
                             className="bg-white/20 p-2 rounded-xl"
                         >
                             <Ionicons name="arrow-back" size={24} color="white" />

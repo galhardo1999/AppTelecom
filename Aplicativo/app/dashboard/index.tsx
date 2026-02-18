@@ -377,7 +377,13 @@ export default function HomeScreen() {
                             <TouchableOpacity
                                 key={index}
                                 className={`items-center ${index === quickActions.length - 1 ? '' : 'mr-5'}`}
-                                onPress={() => router.push(action.route as any)}
+                                onPress={() => {
+                                    if (action.route === '/dashboard/velocidade') {
+                                        router.push('/dashboard/velocidade');
+                                    } else {
+                                        router.push(action.route as any);
+                                    }
+                                }}
                             >
                                 <View
                                     className="w-[60px] h-[60px] rounded-2xl items-center justify-center mb-2 shadow-sm"
