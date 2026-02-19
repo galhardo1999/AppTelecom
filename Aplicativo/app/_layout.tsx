@@ -24,7 +24,7 @@ function RootNavigator() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'dashboard' || segments[0] === 'recorrencia';
+    const inAuthGroup = segments[0] === 'dashboard' || segments[0] === 'recorrencia' || segments[0] === 'contrato' || segments[0] === 'velocidade';
 
     if (user && !inAuthGroup) {
       // Se usuário está logado e não está no dashboard, ir para dashboard

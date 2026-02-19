@@ -173,53 +173,51 @@ export default function SuporteScreen() {
                     {/* FAQ Section */}
                     <Text className="text-slate-800 font-bold text-lg mb-4">Perguntas Frequentes</Text>
 
-                    {faqData.map((faq, index) => (
-                        <View key={index} className="mb-3">
-                            {/* Question Header */}
-                            <TouchableOpacity
-                                onPress={() => toggleExpand(index)}
-                                className={`bg-white p-4 rounded-xl flex-row items-center shadow-sm ${expandedIndex === index ? 'rounded-b-none border-b border-slate-100' : ''
-                                    }`}
-                                activeOpacity={0.7}
-                            >
-                                <View className={`w-10 h-10 ${faq.bgColor} rounded-full items-center justify-center mr-3`}>
-                                    <Ionicons name={faq.icon} size={20} color={faq.iconColor} />
-                                </View>
-                                <Text className="text-slate-700 font-semibold flex-1">{faq.question}</Text>
-                                <Ionicons
-                                    name={expandedIndex === index ? 'chevron-up' : 'chevron-down'}
-                                    size={20}
-                                    color="#94a3b8"
-                                />
-                            </TouchableOpacity>
+                    <View className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        {faqData.map((faq, index) => (
+                            <View key={index} className={`border-b border-slate-100 ${index === faqData.length - 1 ? 'border-b-0' : ''}`}>
+                                {/* Question Header */}
+                                <TouchableOpacity
+                                    onPress={() => toggleExpand(index)}
+                                    className="p-5 flex-row items-center justify-between active:bg-slate-50"
+                                    activeOpacity={0.7}
+                                >
+                                    <Text className="text-slate-800 font-semibold text-base flex-1 pr-4">{faq.question}</Text>
+                                    <Ionicons
+                                        name={'chevron-down'}
+                                        size={22}
+                                        color="#334155"
+                                        style={{ transform: [{ rotate: expandedIndex === index ? '180deg' : '0deg' }] }}
+                                    />
+                                </TouchableOpacity>
 
-                            {/* Expanded Steps */}
-                            {expandedIndex === index && (
-                                <View className="bg-white px-4 pb-4 rounded-b-xl shadow-sm">
-                                    <View className="border-l-2 border-purple-200 ml-5 pl-4 py-2">
-                                        {faq.steps.map((step, stepIndex) => (
-                                            <View key={stepIndex} className="mb-2">
-                                                <Text className="text-slate-600 text-sm leading-5">
+                                {/* Expanded Steps */}
+                                {expandedIndex === index && (
+                                    <View className="px-5 pb-5 pt-0">
+                                        <View className="h-[1px] w-full bg-slate-100 mb-4" />
+                                        <View className="pl-2">
+                                            {faq.steps.map((step, stepIndex) => (
+                                                <Text key={stepIndex} className="text-slate-600 text-[15px] leading-6 mb-2">
                                                     {step}
                                                 </Text>
-                                            </View>
-                                        ))}
-                                    </View>
+                                            ))}
+                                        </View>
 
-                                    {/* Contact Support Button */}
-                                    <TouchableOpacity
-                                        onPress={() => openWhatsApp(faq.whatsappMessage)}
-                                        className="mt-3 bg-purple-50 border border-purple-200 rounded-lg py-3 px-4 flex-row items-center justify-center"
-                                    >
-                                        <Ionicons name="chatbubble-ellipses-outline" size={18} color="#7c3aed" />
-                                        <Text className="text-purple-700 font-semibold ml-2">
-                                            Ainda precisa de ajuda?
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
-                    ))}
+                                        {/* Contact Support Button */}
+                                        <TouchableOpacity
+                                            onPress={() => openWhatsApp(faq.whatsappMessage)}
+                                            className="mt-4 bg-purple-50 border border-purple-200 rounded-xl py-3 px-4 flex-row items-center justify-center"
+                                        >
+                                            <Ionicons name="logo-whatsapp" size={18} color="#7c3aed" />
+                                            <Text className="text-purple-700 font-semibold ml-2">
+                                                Falar com atendente sobre isso
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        ))}
+                    </View>
 
                 </ScrollView>
             </View>

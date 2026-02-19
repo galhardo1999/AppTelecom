@@ -23,7 +23,7 @@ export default function ContratoScreen() {
     const [submitting, setSubmitting] = useState(false);
     const [contractPdf, setContractPdf] = useState<string | null>(null);
     const [contractId, setContractId] = useState<string | null>(null);
-    const [accepted, setAccepted] = useState(false);
+    const [accepted, setAccepted] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -58,10 +58,10 @@ export default function ContratoScreen() {
     };
 
     const handleAccept = async () => {
-        if (!accepted) {
-            Alert.alert('Atenção', 'Você precisa ler e concordar com os termos antes de assinar.');
-            return;
-        }
+        // if (!accepted) {
+        //     Alert.alert('Atenção', 'Você precisa ler e concordar com os termos antes de assinar.');
+        //     return;
+        // }
 
         if (!contractId) return;
 
@@ -191,17 +191,13 @@ export default function ContratoScreen() {
 
             {/* Footer de Aceite */}
             <View className="bg-white p-6 border-t border-slate-100 shadow-lg pb-8">
-                <TouchableOpacity
-                    className="flex-row items-start mb-6"
+                {/* Checkbox removido temporariamente para teste de crash */}
+                {/* <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 }}
                     onPress={() => setAccepted(!accepted)}
                 >
-                    <View className={`w-6 h-6 rounded border mr-3 items-center justify-center mt-0.5 ${accepted ? 'bg-purple-600 border-purple-600' : 'bg-white border-slate-300'}`}>
-                        {accepted && <Ionicons name="checkmark" size={16} color="white" />}
-                    </View>
-                    <Text className="flex-1 text-slate-600 leading-5">
-                        Declaro que li e concordo com os termos e condições do contrato acima, e aceito realizá-lo digitalmente.
-                    </Text>
-                </TouchableOpacity>
+                   ...
+                </TouchableOpacity> */}
 
                 <TouchableOpacity
                     className={`rounded-xl py-4 items-center ${accepted ? 'bg-purple-600 shadow-purple-200 shadow-md' : 'bg-slate-300'}`}

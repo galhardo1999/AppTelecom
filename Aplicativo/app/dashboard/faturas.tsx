@@ -474,19 +474,22 @@ export default function FaturasScreen() {
                         </View>
 
                         {/* Banner Pagamento Recorrente (Versão Compacta para Lista) */}
-                        <TouchableOpacity
-                            onPress={() => router.push('/recorrencia')}
-                            className="mx-4 mt-4 mb-2 bg-slate-800 rounded-xl p-4 flex-row items-center shadow-sm"
-                        >
-                            <View className="w-8 h-8 bg-purple-500/20 rounded-lg items-center justify-center mr-3">
-                                <Ionicons name="card" size={16} color="#a855f7" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-white font-semibold text-sm">Cadastrar Pagamento Recorrente</Text>
-                                <Text className="text-slate-400 text-xs">Evite juros e multas</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={16} color="#64748b" />
-                        </TouchableOpacity>
+                        {/* Banner Pagamento Recorrente (Ocultado temporariamente) */}
+                        {false && (
+                            <TouchableOpacity
+                                onPress={() => router.push('/recorrencia')}
+                                className="mx-4 mt-4 mb-2 bg-slate-800 rounded-xl p-4 flex-row items-center shadow-sm"
+                            >
+                                <View className="w-8 h-8 bg-purple-500/20 rounded-lg items-center justify-center mr-3">
+                                    <Ionicons name="card" size={16} color="#a855f7" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-white font-semibold text-sm">Cadastrar Pagamento Recorrente</Text>
+                                    <Text className="text-slate-400 text-xs">Evite juros e multas</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color="#64748b" />
+                            </TouchableOpacity>
+                        )}
 
                         {/* Lista de Faturas Pagas */}
                         <ScrollView
@@ -554,34 +557,37 @@ export default function FaturasScreen() {
                 <View className="flex-1 mt-8 px-6 pb-6">
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                         {/* Banner Pagamento Recorrente - Aparece se não tiver cartão cadastrado ou sempre (conforme preferência) */}
-                        <TouchableOpacity
-                            onPress={() => router.push('/recorrencia')}
-                            className="bg-slate-800 rounded-xl p-5 mb-4 shadow-sm"
-                        >
-                            <View className="flex-row items-center justify-between mb-2">
-                                <View className="flex-row items-center">
-                                    <View className="bg-purple-500/20 p-1.5 rounded-lg mr-2">
-                                        <Ionicons name="infinite" size={16} color="#a855f7" />
+                        {/* Banner Pagamento Recorrente - Aparece se não tiver cartão cadastrado ou sempre (conforme preferência) */}
+                        {false && (
+                            <TouchableOpacity
+                                onPress={() => router.push('/recorrencia')}
+                                className="bg-slate-800 rounded-xl p-5 mb-4 shadow-sm"
+                            >
+                                <View className="flex-row items-center justify-between mb-2">
+                                    <View className="flex-row items-center">
+                                        <View className="bg-purple-500/20 p-1.5 rounded-lg mr-2">
+                                            <Ionicons name="infinite" size={16} color="#a855f7" />
+                                        </View>
+                                        <Text className="text-purple-400 font-bold text-xs uppercase tracking-wider">Novidade</Text>
                                     </View>
-                                    <Text className="text-purple-400 font-bold text-xs uppercase tracking-wider">Novidade</Text>
+                                    <Ionicons name="arrow-forward" size={16} color="#94a3b8" />
                                 </View>
-                                <Ionicons name="arrow-forward" size={16} color="#94a3b8" />
-                            </View>
 
-                            <View className="flex-row items-center">
-                                <View className="flex-1">
-                                    <Text className="text-white font-bold text-lg leading-6 mb-1">
-                                        Pague automaticamente
-                                    </Text>
-                                    <Text className="text-slate-400 text-xs leading-4">
-                                        Cadastre seu cartão e evite bloqueios.
-                                    </Text>
+                                <View className="flex-row items-center">
+                                    <View className="flex-1">
+                                        <Text className="text-white font-bold text-lg leading-6 mb-1">
+                                            Pague automaticamente
+                                        </Text>
+                                        <Text className="text-slate-400 text-xs leading-4">
+                                            Cadastre seu cartão e evite bloqueios.
+                                        </Text>
+                                    </View>
+                                    <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center shadow-lg shadow-purple-900/50">
+                                        <Ionicons name="card-outline" size={20} color="white" />
+                                    </View>
                                 </View>
-                                <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center shadow-lg shadow-purple-900/50">
-                                    <Ionicons name="card-outline" size={20} color="white" />
-                                </View>
-                            </View>
-                        </TouchableOpacity>
+                            </TouchableOpacity>
+                        )}
 
                         {/* Mostrar botões de ação apenas para faturas não pagas */}
                         {!isPaid && selectedInvoice && (
