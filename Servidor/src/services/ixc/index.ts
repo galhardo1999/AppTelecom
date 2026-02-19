@@ -7,7 +7,7 @@
 import { findClientByEmail, validatePassword } from './client.js';
 import type { IXCClient } from './client.js';
 import { getOpenInvoices, getAllInvoices, getPaidInvoices, getPixCode, getBoleto } from './invoice.js';
-import { getContracts, getContractPdf, updateContractRecurringCard, deleteRecurringCard } from './contract.js';
+import { getContracts, getContractPdf, updateContractRecurringCard, deleteRecurringCard, acceptContract } from './contract.js';
 import { getInternetUsage } from './usage.js';
 import { getCityName, getStateName } from './location.js';
 
@@ -28,6 +28,7 @@ export const ixcService = {
     getContractPdf,
     updateContractRecurringCard,
     deleteRecurringCard,
+    acceptContract,
 
     // Usage
     getInternetUsage,

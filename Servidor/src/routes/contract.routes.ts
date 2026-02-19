@@ -149,4 +149,44 @@ contractRoutes.delete('/:contractId/recurring-card', withErrorHandler(
     'Erro ao remover cartão recorrente'
 ));
 
+/**
+ * POST /api/contracts/:contractId/accept
+ * Realiza o aceite digital do contrato
+ */
+contractRoutes.post('/:contractId/accept', withErrorHandler(
+    async (c) => {
+        const contractId = c.req.param('contractId');
+        const user = c.get('user') as JWTPayload;
+        const body = await c.req.json().catch(() => ({})); // Body is optional/ignored for sensitive data now
+
+        // 1. Authorization: Verify if user owns the contract
+        const userContracts = await ixcService.getContracts(user.userId);
+        const ownsContract = userContracts.some((contract: any) => contract.id === contractId);
+
+        if (!ownsContract) {
+            return c.json({ error: 'Acesso negado: Contrato não pertence ao usuário' }, 403);
+        }
+
+        // 2. Server-side Data Generation for Integrity
+        // Extract IP from headers (trusting proxy if behind Vercel/Nginx)
+        const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'IP não identificado';
+        // Use provided userAgent or fallback using headers
+        const userAgent = body.userAgent || c.req.header('user-agent') || 'App Mobile';
+        const timestamp = new Date().toISOString();
+
+        const result = await ixcService.acceptContract(contractId, {
+            ip,
+            userAgent,
+            timestamp
+        });
+
+        return c.json({
+            success: true,
+            message: 'Contrato aceito com sucesso',
+            data: result
+        });
+    },
+    'Erro ao aceitar contrato'
+));
+
 export { contractRoutes };

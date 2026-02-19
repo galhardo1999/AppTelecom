@@ -27,14 +27,6 @@ export default function DashboardLayout() {
                     swipeEnabled: true,
                 }}
             />
-            <MaterialTopTabs.Screen
-                name="velocidade"
-                options={{
-                    swipeEnabled: false,
-                    tabBarItemStyle: { display: 'none' },
-                    headerShown: false,
-                }}
-            />
         </MaterialTopTabs>
     );
 }

@@ -204,6 +204,65 @@ export async function updateContractRecurringCard(contractId: string, cardData: 
 }
 
 /**
+ * Aceitar contrato digitalmente
+ * - Altera status para 'A' (Ativo)
+ * - Adiciona observação com dados do aceite
+ */
+export async function acceptContract(contractId: string, acceptanceData: {
+    ip: string;
+    userAgent: string;
+    timestamp: string;
+}) {
+    try {
+        debugLog('CONTRACT', `Processando aceite do contrato ${contractId}`);
+
+        const currentContract = await fetchContract(contractId);
+
+        // Se já estiver ativo, não faz nada
+        if (currentContract.status === 'A') {
+            return {
+                success: true,
+                message: 'Contrato já está ativo',
+                contractId
+            };
+        }
+
+        const obsAceite = `Contrato aceito digitalmente via App Apollo Telecom.\nData: ${acceptanceData.timestamp}\nIP: ${acceptanceData.ip}\nDispositivo: ${acceptanceData.userAgent}`;
+
+        // Primeiro sanitiza o objeto atual para remover campos protegidos
+        const payload = sanitizePayload({
+            ...currentContract,
+            data_ativacao: acceptanceData.timestamp.split('T')[0].split('-').reverse().join('/'), // DD/MM/YYYY
+            obs: (currentContract.obs ? currentContract.obs + '\n\n' : '') + obsAceite
+        });
+
+        // Força o status A (Ativo) após sanitização, pois 'status' está na lista de exclusão
+        payload.status = 'A';
+
+        debugLog('CONTRACT', 'Payload Aceite:', JSON.stringify(payload, null, 2));
+
+        const response = await ixcUpdateClient.put(`/cliente_contrato/${contractId}`, payload);
+
+        if (response.data.type !== 'success') {
+            console.error('[CONTRACT] Erro IXC ao aceitar contrato:', response.data);
+            throw new Error(JSON.stringify({ ...response.data, payload_sent: payload }));
+        }
+
+        debugLog('CONTRACT', 'Contrato ativado com sucesso');
+
+        return {
+            success: true,
+            message: 'Contrato aceito com sucesso',
+            contractId,
+            data: response.data
+        };
+    } catch (error: any) {
+        console.error('IXC acceptContract error:', error.response?.data || error.message);
+        throw error;
+    }
+}
+
+/**
  * Remover cartão recorrente do contrato
  * Limpa campos do cartão e volta carteira para boleto (13)
  */

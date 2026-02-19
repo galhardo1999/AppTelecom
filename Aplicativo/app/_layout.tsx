@@ -80,7 +80,14 @@ function RootNavigator() {
           headerShown: false
         }}
       />
-    </Stack>
+      <Stack.Screen
+        name="contrato"
+        options={{
+          presentation: 'modal',
+          headerShown: false
+        }}
+      />
+    </Stack >
   );
 }
 

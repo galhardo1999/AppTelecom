@@ -168,6 +168,16 @@ export const bffApi = {
         const response = await api.delete(`/api/contracts/${contractId}/recurring-card`);
         return response.data;
     },
+
+    // Aceitar contrato digitalmente
+    acceptContract: async (contractId: string, data: {
+        ip?: string;
+        userAgent?: string;
+        timestamp: string;
+    }) => {
+        const response = await api.post(`/api/contracts/${contractId}/accept`, data);
+        return response.data;
+    },
 };
 
 export default api;

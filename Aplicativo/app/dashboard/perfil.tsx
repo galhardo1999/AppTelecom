@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/context/AuthContext';
@@ -35,6 +35,14 @@ export default function PerfilScreen() {
     // Verificar se o contrato está em pré-contrato aguardando assinatura
     const hasPendencias = selectedContract?.status === 'P' && selectedContract?.status_internet === 'AA';
 
+    const { openPendencias } = useLocalSearchParams();
+
+    useEffect(() => {
+        if (openPendencias === 'true' && hasPendencias) {
+            setShowPendenciasModal(true);
+        }
+    }, [openPendencias, hasPendencias]);
+
     const handleLogout = () => {
         Alert.alert(
             "Sair",
@@ -48,14 +56,13 @@ export default function PerfilScreen() {
 
     const handleAssinarContrato = () => {
         setShowPendenciasModal(false);
-        // TODO: Implementar navegação para assinatura de contrato
-        Alert.alert('Assinar Contrato', 'Funcionalidade de assinatura de contrato será implementada.');
+        router.push('/contrato');
     };
 
     const handleAssinarTermo = () => {
         setShowPendenciasModal(false);
-        // TODO: Implementar navegação para assinatura de termo
-        Alert.alert('Assinar Termo', 'Funcionalidade de assinatura de termo será implementada.');
+        // router.push('/termo'); // TODO: Criar tela de termo se for separado
+        Alert.alert('Em breve', 'A assinatura do termo será disponibilizada em breve.');
     };
 
     const accountItems: MenuItem[] = [
@@ -230,68 +237,73 @@ export default function PerfilScreen() {
                 </Text>
             </ScrollView>
 
-            {/* Modal de Pendências */}
-            <Modal
-                visible={showPendenciasModal}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setShowPendenciasModal(false)}
-            >
-                <View className="flex-1 bg-black/50 justify-end">
-                    <View className="bg-white rounded-t-3xl p-6">
-                        {/* Header do Modal */}
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-slate-800">Documentos Pendentes</Text>
-                            <TouchableOpacity onPress={() => setShowPendenciasModal(false)}>
-                                <Ionicons name="close-circle" size={28} color="#94a3b8" />
+            {/* Modal de Pendências (Custom Overlay) */}
+            {showPendenciasModal && (
+                <View className="absolute top-0 left-0 right-0 bottom-0 z-50">
+                    {/* Backdrop Escuro */}
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        className="absolute top-0 left-0 right-0 bottom-0 bg-black/50"
+                        onPress={() => setShowPendenciasModal(false)}
+                    />
+
+                    {/* Conteúdo do Modal */}
+                    <View className="flex-1 justify-end" pointerEvents="box-none">
+                        <View className="bg-white rounded-t-3xl p-6 shadow-2xl">
+                            {/* Header do Modal */}
+                            <View className="flex-row justify-between items-center mb-6">
+                                <Text className="text-xl font-bold text-slate-800">Documentos Pendentes</Text>
+                                <TouchableOpacity onPress={() => setShowPendenciasModal(false)}>
+                                    <Ionicons name="close-circle" size={28} color="#94a3b8" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Descrição */}
+                            <Text className="text-slate-500 text-sm mb-6">
+                                Para ativar seu serviço, você precisa assinar os documentos abaixo:
+                            </Text>
+
+                            {/* Opção: Assinar Contrato */}
+                            <TouchableOpacity
+                                className="flex-row items-center p-4 bg-purple-50 rounded-2xl mb-3 active:bg-purple-100"
+                                onPress={handleAssinarContrato}
+                            >
+                                <View className="w-12 h-12 bg-purple-100 rounded-xl items-center justify-center mr-4">
+                                    <Ionicons name="document-text-outline" size={24} color="#7c3aed" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-base font-semibold text-slate-800">Assinar Contrato</Text>
+                                    <Text className="text-slate-500 text-sm">Contrato de prestação de serviço</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color="#7c3aed" />
+                            </TouchableOpacity>
+
+                            {/* Opção: Assinar Termo */}
+                            <TouchableOpacity
+                                className="flex-row items-center p-4 bg-blue-50 rounded-2xl mb-6 active:bg-blue-100"
+                                onPress={handleAssinarTermo}
+                            >
+                                <View className="w-12 h-12 bg-blue-100 rounded-xl items-center justify-center mr-4">
+                                    <Ionicons name="shield-checkmark-outline" size={24} color="#3b82f6" />
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="text-base font-semibold text-slate-800">Assinar Termo</Text>
+                                    <Text className="text-slate-500 text-sm">Termo de adesão e condições</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
+                            </TouchableOpacity>
+
+                            {/* Botão Fechar */}
+                            <TouchableOpacity
+                                className="bg-slate-100 rounded-xl py-4 items-center"
+                                onPress={() => setShowPendenciasModal(false)}
+                            >
+                                <Text className="text-slate-600 font-semibold">Fechar</Text>
                             </TouchableOpacity>
                         </View>
-
-                        {/* Descrição */}
-                        <Text className="text-slate-500 text-sm mb-6">
-                            Para ativar seu serviço, você precisa assinar os documentos abaixo:
-                        </Text>
-
-                        {/* Opção: Assinar Contrato */}
-                        <TouchableOpacity
-                            className="flex-row items-center p-4 bg-purple-50 rounded-2xl mb-3 active:bg-purple-100"
-                            onPress={handleAssinarContrato}
-                        >
-                            <View className="w-12 h-12 bg-purple-100 rounded-xl items-center justify-center mr-4">
-                                <Ionicons name="document-text-outline" size={24} color="#7c3aed" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-base font-semibold text-slate-800">Assinar Contrato</Text>
-                                <Text className="text-slate-500 text-sm">Contrato de prestação de serviço</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color="#7c3aed" />
-                        </TouchableOpacity>
-
-                        {/* Opção: Assinar Termo */}
-                        <TouchableOpacity
-                            className="flex-row items-center p-4 bg-blue-50 rounded-2xl mb-6 active:bg-blue-100"
-                            onPress={handleAssinarTermo}
-                        >
-                            <View className="w-12 h-12 bg-blue-100 rounded-xl items-center justify-center mr-4">
-                                <Ionicons name="shield-checkmark-outline" size={24} color="#3b82f6" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-base font-semibold text-slate-800">Assinar Termo</Text>
-                                <Text className="text-slate-500 text-sm">Termo de adesão e condições</Text>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
-                        </TouchableOpacity>
-
-                        {/* Botão Fechar */}
-                        <TouchableOpacity
-                            className="bg-slate-100 rounded-xl py-4 items-center"
-                            onPress={() => setShowPendenciasModal(false)}
-                        >
-                            <Text className="text-slate-600 font-semibold">Fechar</Text>
-                        </TouchableOpacity>
                     </View>
                 </View>
-            </Modal>
+            )}
         </View>
     );
 }

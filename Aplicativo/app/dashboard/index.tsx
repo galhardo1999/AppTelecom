@@ -97,7 +97,7 @@ export default function HomeScreen() {
 
     const quickActions = [
         { title: 'Faturas', icon: 'receipt-outline' as const, color: '#a855f7', route: '/dashboard/faturas' },
-        { title: 'Teste de Velocidade', icon: 'speedometer-outline' as const, color: '#a855f7', route: '/dashboard/velocidade' },
+        { title: 'Teste de Velocidade', icon: 'speedometer-outline' as const, color: '#a855f7', route: '/velocidade' },
         { title: 'Recorrência', icon: 'card-outline' as const, color: '#a855f7', route: '/recorrencia' },
         { title: 'Suporte', icon: 'headset-outline' as const, color: '#a855f7', route: '/dashboard/suporte' },
         { title: 'Meus Dados', icon: 'person-outline' as const, color: '#a855f7', route: '/dashboard/perfil' },
@@ -247,6 +247,33 @@ export default function HomeScreen() {
 
 
 
+                {/* Card de Pendências (Estilo Imagem 2) */}
+                {selectedContract && selectedContract.status !== 'A' && (
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => router.push('/dashboard/perfil')}
+                        className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 shadow-sm flex-row items-center justify-between"
+                    >
+                        <View className="flex-row items-center flex-1">
+                            <View className="bg-amber-100 p-2 rounded-xl mr-3">
+                                <Ionicons name="alert-circle" size={24} color="#d97706" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-amber-800 font-bold text-base">
+                                    Pendências
+                                </Text>
+                                <Text className="text-amber-700 text-xs">
+                                    Você tem documentos pendentes para assinar
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View className="bg-amber-600 py-2 px-4 rounded-lg">
+                            <Text className="text-white font-bold text-xs">VER</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
+
                 {/* Card Principal do Contrato */}
                 {selectedContract && (
                     <TouchableOpacity
@@ -312,28 +339,6 @@ export default function HomeScreen() {
                     </View>
                 )}
 
-                {/* Alerta de Pendências - Pré-contrato aguardando assinatura */}
-                {hasPendencias && (
-                    <View className="bg-amber-50 rounded-2xl p-4 mb-4 border border-amber-200">
-                        <View className="flex-row items-center">
-                            <View className="w-10 h-10 bg-amber-100 rounded-xl items-center justify-center mr-3">
-                                <Ionicons name="alert-circle" size={22} color="#d97706" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-amber-700 font-bold text-sm">Pendências</Text>
-                                <Text className="text-amber-600 text-xs">
-                                    Você tem documentos pendentes para assinar
-                                </Text>
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => router.push('/dashboard/perfil')}
-                                className="bg-amber-600 px-3 py-2 rounded-lg"
-                            >
-                                <Text className="text-white font-bold text-xs">VER</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
 
                 {/* Ações Rápidas - Círculos em linha */}
                 <Text className="text-slate-800 text-lg font-bold mb-4">Acesso Rápido</Text>
@@ -378,8 +383,8 @@ export default function HomeScreen() {
                                 key={index}
                                 className={`items-center ${index === quickActions.length - 1 ? '' : 'mr-5'}`}
                                 onPress={() => {
-                                    if (action.route === '/dashboard/velocidade') {
-                                        router.push('/dashboard/velocidade');
+                                    if (action.route === '/velocidade') {
+                                        router.push('/velocidade');
                                     } else {
                                         router.push(action.route as any);
                                     }
