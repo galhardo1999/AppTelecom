@@ -247,33 +247,6 @@ export default function HomeScreen() {
 
 
 
-                {/* Card de Pendências (Estilo Imagem 2) */}
-                {selectedContract && selectedContract.status !== 'A' && (
-                    <TouchableOpacity
-                        activeOpacity={0.9}
-                        onPress={() => router.push('/dashboard/perfil')}
-                        className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 shadow-sm flex-row items-center justify-between"
-                    >
-                        <View className="flex-row items-center flex-1">
-                            <View className="bg-amber-100 p-2 rounded-xl mr-3">
-                                <Ionicons name="alert-circle" size={24} color="#d97706" />
-                            </View>
-                            <View className="flex-1">
-                                <Text className="text-amber-800 font-bold text-base">
-                                    Pendências
-                                </Text>
-                                <Text className="text-amber-700 text-xs">
-                                    Você tem documentos pendentes para assinar
-                                </Text>
-                            </View>
-                        </View>
-
-                        <View className="bg-amber-600 py-2 px-4 rounded-lg">
-                            <Text className="text-white font-bold text-xs">VER</Text>
-                        </View>
-                    </TouchableOpacity>
-                )}
-
                 {/* Card Principal do Contrato */}
                 {selectedContract && (
                     <TouchableOpacity
@@ -312,6 +285,33 @@ export default function HomeScreen() {
                                     color="#7c3aed"
                                 />
                             </View>
+                        </View>
+                    </TouchableOpacity>
+                )}
+
+                {/* Card de Pendências (Estilo Imagem 2) */}
+                {selectedContract && selectedContract.status !== 'A' && (
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => router.push('/dashboard/perfil')}
+                        className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 shadow-sm flex-row items-center justify-between"
+                    >
+                        <View className="flex-row items-center flex-1">
+                            <View className="bg-amber-100 p-2 rounded-xl mr-3">
+                                <Ionicons name="alert-circle" size={24} color="#d97706" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-amber-800 font-bold text-base">
+                                    Pendências
+                                </Text>
+                                <Text className="text-amber-700 text-xs">
+                                    Você tem documentos pendentes para assinar
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View className="bg-amber-600 py-2 px-4 rounded-lg">
+                            <Text className="text-white font-bold text-xs">VER</Text>
                         </View>
                     </TouchableOpacity>
                 )}
