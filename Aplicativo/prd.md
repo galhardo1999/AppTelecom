@@ -1,6 +1,6 @@
 # PRD — Apollo Telecom App (Mobile)
 
-> Documento atualizado em 13/02/2026, refletindo o estado atual do projeto.
+> Documento atualizado em 23/03/2026, refletindo o estado atual do projeto.
 
 ## 1. Visão Geral
 
@@ -95,7 +95,20 @@ O app **nunca** se conecta diretamente ao IXC. Toda comunicação passa pelo BFF
 - Seção de Pendências (documentos a assinar)
 - Logout com confirmação
 
-### 4.3 Pagamento Recorrente (`app/recorrencia/`)
+### 4.3 Assinatura de Contrato (`app/contrato.tsx`) ✅
+- Exibe o texto completo do contrato de prestação de serviços Apollo Telecom (SCM/Anatel)
+- Checkbox de aceite + botão "Assinar e Finalizar"
+- Envia aceite ao BFF com timestamp e user-agent do dispositivo
+- Botão de compartilhamento do contrato (Share nativo)
+- Redireciona para o dashboard após aceite bem-sucedido
+
+### 4.4 Teste de Velocidade (`app/velocidade.tsx`) ✅
+- WebView embutida apontando para `fast.com/pt/` (Speedtest Netflix)
+- Header com gradiente cyan
+- Indicador de carregamento customizado enquanto a página carrega
+- Botão de voltar para a tela anterior
+
+### 4.5 Pagamento Recorrente (`app/recorrencia/`)
 
 #### Detalhes (`index.tsx`) ✅
 - Visualização do cartão cadastrado (preview premium com gradiente da bandeira)
@@ -150,6 +163,8 @@ O app **nunca** se conecta diretamente ao IXC. Toda comunicação passa pelo BFF
 app/
 ├── _layout.tsx              # Root layout (providers, auth redirect)
 ├── index.tsx                # Tela de Login
+├── contrato.tsx             # Assinatura digital de contrato
+├── velocidade.tsx           # Teste de velocidade (WebView fast.com)
 ├── dashboard/
 │   ├── _layout.tsx          # Tab layout (Material Top Tabs)
 │   ├── index.tsx            # Home
@@ -181,6 +196,8 @@ src/
 │   ├── useMutations.ts      # React Query mutations (PIX, boleto, cartão)
 │   ├── useQueries.ts        # React Query queries (faturas, contratos)
 │   └── useScreenSecurity.ts # Prevenção de screenshots
+├── lib/
+│   └── queryClient.ts       # Instância e configuração central do React Query
 ├── services/
 │   └── api.ts               # Axios + interceptadores + endpoints BFF
 ├── types/
@@ -202,7 +219,7 @@ src/
 - [ ] **Refatorar `index.tsx` Login** (~515 linhas) — extrair modais e lógica
 - [ ] **Notificações push** — alertas de faturas vencidas
 - [ ] **Modo offline** — cache local de dados com React Query persistence
-- [ ] **Tela de consumo** — gráficos de uso de internet (dados já disponíveis no BFF)
+- [x] **Tela de velocidade** — teste de velocidade via WebView (fast.com) — `app/velocidade.tsx` ✅
 - [ ] **Dark mode** — suporte a tema escuro
-- [ ] **Assinatura digital** — integração com DocuSign ou similar para pendências
+- [x] **Assinatura digital** — aceite eletrônico de contrato com registro de timestamp — `app/contrato.tsx` ✅
 - [ ] **Testes automatizados** — Jest + React Native Testing Library
