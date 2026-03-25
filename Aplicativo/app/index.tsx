@@ -308,7 +308,7 @@ export default function LoginScreen() {
                         {/* Seção do Logo Animado */}
                         <View className="items-center mb-6">
                             <AnimatedImage
-                                source={require('../assets/logo.png')}
+                                source={require('../assets/iconeaplicativo.png')}
                                 style={[{ width: 180, height: 80, resizeMode: 'contain' }, logoStyle]}
                             />
                         </View>

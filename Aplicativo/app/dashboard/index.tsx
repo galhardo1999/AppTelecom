@@ -139,7 +139,7 @@ export default function HomeScreen() {
                         entering={FadeInDown.delay(50).duration(600).springify()}
                     >
                         <Image
-                            source={require('../../assets/logo.png')}
+                            source={require('../../assets/iconeaplicativo.png')}
                             style={{ width: 180, height: 100 }}
                             resizeMode="contain"
                         />
@@ -220,7 +220,7 @@ export default function HomeScreen() {
                     <View className="flex-row justify-between items-center py-2">
                         <View className=" p-2 rounded-xl">
                             <Image
-                                source={require('../../assets/logo.png')}
+                                source={require('../../assets/iconeaplicativo.png')}
                                 style={{ width: 120, height: 50 }}
                                 resizeMode="contain"
                                 tintColor="white"

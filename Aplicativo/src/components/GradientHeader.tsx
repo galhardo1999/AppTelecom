@@ -40,7 +40,7 @@ export function GradientHeader({
                     <View className="flex-row justify-between items-center py-2">
                         <View className="bg-white/20 p-2 rounded-xl">
                             <Image
-                                source={require('../../assets/logo.png')}
+                                source={require('../../assets/iconeaplicativo.png')}
                                 style={{ width: 80, height: 30 }}
                                 resizeMode="contain"
                                 tintColor="white"

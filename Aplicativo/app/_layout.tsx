@@ -55,7 +55,7 @@ function RootNavigator() {
       <View className="flex-1 justify-center items-center bg-white">
         <View className="flex-1 justify-center items-center">
           <Image
-            source={require('../assets/logo.png')}
+            source={require('../assets/iconeaplicativo.png')}
             style={{ width: 200, height: 100 }}
             resizeMode="contain"
           />
