@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -19,11 +18,8 @@ import { CreditCardPreview } from '../../src/components/CreditCardPreview';
 import { useContract } from '../../src/context/ContractContext';
 import { useScreenSecurity } from '../../src/hooks/useScreenSecurity';
 import { bffApi } from '../../src/services/api';
-import { detectCardBrand, getBrandInfo, maskCardNumber, maskExpiry } from '../../src/utils/cardUtils';
+import { detectCardBrand, maskCardNumber, maskExpiry } from '../../src/utils/cardUtils';
 import { logger } from '../../src/utils/logger';
-
-const { width } = Dimensions.get('window');
-
 
 export default function CobrancaRecorrenteCadastroScreen() {
     const router = useRouter();
@@ -41,7 +37,6 @@ export default function CobrancaRecorrenteCadastroScreen() {
     // Detectar bandeira automaticamente
     const cleanNumber = numeroCartao.replace(/\D/g, '');
     const bandeira = detectCardBrand(cleanNumber);
-    const brandInfo = getBrandInfo(bandeira);
 
     // Validação do formulário
     const isFormValid =
@@ -78,7 +73,7 @@ export default function CobrancaRecorrenteCadastroScreen() {
         }
 
         // Validar validade MM/AA
-        const [mm, aa] = validade.split('/');
+        const [mm] = validade.split('/');
         const mesNum = parseInt(mm, 10);
         if (mesNum < 1 || mesNum > 12) {
             Alert.alert('Atenção', 'Mês de validade inválido');

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
@@ -19,7 +19,7 @@ import {
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertType, CustomAlert } from '../src/components/CustomAlert';
-import { useAuth } from '../src/context/AuthContext';
+import { type User, useAuth } from '../src/context/AuthContext';
 import { getBiometryIcon, getBiometryLabel, useBiometrics } from '../src/hooks/useBiometrics';
 import { authApi } from '../src/services/api';
 import { logger } from '../src/utils/logger';
@@ -27,17 +27,23 @@ import { logger } from '../src/utils/logger';
 // Componente de imagem animado
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
+type LoginPendente = {
+    token: string;
+    user: User;
+};
+
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [biometricLoading, setBiometricLoading] = useState(false);
-    const { signIn } = useAuth();
+    const { signIn, signInWithSession, signInWithToken } = useAuth();
 
     const [activeField, setActiveField] = useState<string | null>(null);
     const [rememberEmail, setRememberEmail] = useState(false);
     const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+    const [loginPendente, setLoginPendente] = useState<LoginPendente | null>(null);
 
     // Variáveis de animação
     const logoScale = useSharedValue(1);
@@ -69,7 +75,7 @@ export default function LoginScreen() {
             keyboardWillShow.remove();
             keyboardWillHide.remove();
         };
-    }, []);
+    }, [contentTranslateY, logoScale, titleHeight, titleOpacity]);
 
     // Estilos animados
     const logoStyle = useAnimatedStyle(() => {
@@ -116,6 +122,24 @@ export default function LoginScreen() {
         storedEmail,
     } = useBiometrics();
 
+    const handleBiometricLogin = useCallback(async () => {
+        if (!canUseBiometrics) return;
+
+        setBiometricLoading(true);
+        try {
+            const credentials = await authenticateWithBiometrics();
+
+            if (credentials) {
+                await signInWithToken(credentials.token);
+            }
+        } catch (error: any) {
+            logger.error('Biometric login error:', error);
+            // Não mostra erro - usuário ainda pode fazer login com senha
+        } finally {
+            setBiometricLoading(false);
+        }
+    }, [authenticateWithBiometrics, canUseBiometrics, signInWithToken]);
+
     // Carregar email salvo
     useEffect(() => {
         SecureStore.getItemAsync('saved_email').then(savedEmail => {
@@ -131,25 +155,7 @@ export default function LoginScreen() {
         if (canUseBiometrics && !biometricsLoading) {
             handleBiometricLogin();
         }
-    }, [canUseBiometrics, biometricsLoading]);
-
-    const handleBiometricLogin = async () => {
-        if (!canUseBiometrics) return;
-
-        setBiometricLoading(true);
-        try {
-            const credentials = await authenticateWithBiometrics();
-
-            if (credentials) {
-                await signIn(credentials.email, credentials.password);
-            }
-        } catch (error: any) {
-            logger.error('Biometric login error:', error);
-            // Não mostra erro - usuário ainda pode fazer login com senha
-        } finally {
-            setBiometricLoading(false);
-        }
-    };
+    }, [canUseBiometrics, biometricsLoading, handleBiometricLogin]);
 
     const showAlert = (title: string, message: string, type: AlertType = 'info', showSupport = false) => {
         setAlertConfig({
@@ -162,16 +168,23 @@ export default function LoginScreen() {
         setAlertVisible(true);
     };
 
-    const performSignIn = async () => {
+    const salvarEmailLembrado = async () => {
+        if (rememberEmail) {
+            await SecureStore.setItemAsync('saved_email', email);
+        } else {
+            await SecureStore.deleteItemAsync('saved_email');
+        }
+    };
+
+    const performSignIn = async (sessao?: LoginPendente) => {
         setLoading(true);
         try {
-            await signIn(email, password);
-
-            if (rememberEmail) {
-                await SecureStore.setItemAsync('saved_email', email);
+            if (sessao) {
+                await signInWithSession(sessao.token, sessao.user);
             } else {
-                await SecureStore.deleteItemAsync('saved_email');
+                await signIn(email, password);
             }
+            await salvarEmailLembrado();
         } catch (error: any) {
             const isBlocked = error.message?.toLowerCase().includes('bloqueado');
 
@@ -207,20 +220,22 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             // 1. Validar credenciais primeiro (sem logar no contexto ainda)
-            await authApi.login(email, password);
+            const response = await authApi.login(email, password);
+            const sessao = { token: response.token, user: response.user as User };
 
             // 2. Se login ok, verificar se pode oferecer biometria
             // Oferece se: não habilitado OU habilitado para outro usuário
             const shouldOfferBiometrics = isSupported && (!isEnabled || (storedEmail && storedEmail !== email));
 
             if (shouldOfferBiometrics) {
+                setLoginPendente(sessao);
                 setLoading(false); // Parar loading para mostrar o modal
                 setShowBiometricPrompt(true);
                 return; // Interromper fluxo para aguardar interação do usuário
             }
 
             // 3. Se não precisa de biometria, seguir para login (que redireciona)
-            await performSignIn();
+            await performSignIn(sessao);
 
         } catch (error: any) {
             setLoading(false);
@@ -243,7 +258,12 @@ export default function LoginScreen() {
     };
 
     const handleEnableBiometrics = async () => {
-        const success = await enableBiometrics(email, password);
+        if (!loginPendente) {
+            await performSignIn();
+            return;
+        }
+
+        const success = await enableBiometrics(email, loginPendente.token);
         if (success) {
             showAlert(
                 'Sucesso!',
@@ -252,13 +272,17 @@ export default function LoginScreen() {
             );
         }
         setShowBiometricPrompt(false);
+        const sessao = loginPendente;
+        setLoginPendente(null);
         // Prosseguir para o login oficial após ativar (ou falhar)
-        await performSignIn();
+        await performSignIn(sessao);
     };
 
     const handleSkipBiometrics = async () => {
         setShowBiometricPrompt(false);
-        await performSignIn();
+        const sessao = loginPendente;
+        setLoginPendente(null);
+        await performSignIn(sessao || undefined);
     };
 
     const handlePhoneSupport = () => {
@@ -268,7 +292,7 @@ export default function LoginScreen() {
     const handleWhatsappSupport = () => {
         // Formato internacional para WhatsApp: 55 + DDD + Numero
         const message = "Olá! Esqueci meus dados de acesso ao aplicativo e gostaria de ajuda para recuperar.";
-        Linking.openURL(`https://wa.me/5508008710606?text=${encodeURIComponent(message)}`);
+        Linking.openURL(`https://wa.me/551838710606?text=${encodeURIComponent(message)}`);
     };
 
     const biometryLabel = getBiometryLabel(biometryType);
@@ -308,8 +332,8 @@ export default function LoginScreen() {
                         {/* Seção do Logo Animado */}
                         <View className="items-center mb-6">
                             <AnimatedImage
-                                source={require('../assets/iconeaplicativo.png')}
-                                style={[{ width: 180, height: 80, resizeMode: 'contain' }, logoStyle]}
+                                source={require('../assets/logo.png')}
+                                style={[{ width: 220, height: 84, resizeMode: 'contain' }, logoStyle]}
                             />
                         </View>
 
@@ -524,7 +548,7 @@ export default function LoginScreen() {
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-slate-700 text-sm">Telefone: 0800 871 0606</Text>
-                                    <Text className="text-slate-700 text-sm">WhatsApp: 0800 871 0606</Text>
+                                    <Text className="text-slate-700 text-sm">WhatsApp: (18) 3871-0606</Text>
                                 </View>
                             </View>
                             <View className="flex-row items-start mb-3">

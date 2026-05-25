@@ -3,7 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useState } from 'react';
 
 const BIOMETRICS_ENABLED_KEY = 'biometrics_enabled';
-const BIOMETRICS_CREDENTIALS_KEY = 'biometrics_credentials';
+const BIOMETRICS_TOKEN_KEY = 'biometrics_token';
+const BIOMETRICS_EMAIL_KEY = 'biometrics_email';
 
 interface BiometricsState {
     isSupported: boolean;
@@ -18,7 +19,7 @@ interface UseBiometricsReturn extends BiometricsState {
      * Enables biometric authentication for the current user
      * Must be called after a successful login to save credentials
      */
-    enableBiometrics: (email: string, password: string) => Promise<boolean>;
+    enableBiometrics: (email: string, token: string) => Promise<boolean>;
 
     /**
      * Disables biometric authentication
@@ -28,7 +29,7 @@ interface UseBiometricsReturn extends BiometricsState {
     /**
      * Authenticates the user using biometrics and returns saved credentials
      */
-    authenticateWithBiometrics: () => Promise<{ email: string; password: string } | null>;
+    authenticateWithBiometrics: () => Promise<{ email: string; token: string } | null>;
 
     /**
      * Checks if biometrics can be used (device supports + user enabled)
@@ -82,11 +83,7 @@ export function useBiometrics(): UseBiometricsReturn {
             // Get stored email if enabled
             let storedEmail = null;
             if (isEnabled) {
-                const credentialsJson = await SecureStore.getItemAsync(BIOMETRICS_CREDENTIALS_KEY);
-                if (credentialsJson) {
-                    const { email } = JSON.parse(credentialsJson);
-                    storedEmail = email;
-                }
+                storedEmail = await SecureStore.getItemAsync(BIOMETRICS_EMAIL_KEY);
             }
 
             setState({
@@ -102,7 +99,7 @@ export function useBiometrics(): UseBiometricsReturn {
         }
     };
 
-    const enableBiometrics = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const enableBiometrics = useCallback(async (email: string, token: string): Promise<boolean> => {
         try {
             // First, verify the user with biometrics
             const result = await LocalAuthentication.authenticateAsync({
@@ -115,11 +112,17 @@ export function useBiometrics(): UseBiometricsReturn {
                 return false;
             }
 
-            // Save credentials securely
+            // Salvar somente o token de sessão. A senha nunca deve ser persistida no app.
             await SecureStore.setItemAsync(
-                BIOMETRICS_CREDENTIALS_KEY,
-                JSON.stringify({ email, password })
+                BIOMETRICS_TOKEN_KEY,
+                token,
+                {
+                    requireAuthentication: true,
+                    authenticationPrompt: 'Confirme sua identidade para acessar sua conta',
+                    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+                }
             );
+            await SecureStore.setItemAsync(BIOMETRICS_EMAIL_KEY, email);
 
             // Mark as enabled
             await SecureStore.setItemAsync(BIOMETRICS_ENABLED_KEY, 'true');
@@ -134,15 +137,18 @@ export function useBiometrics(): UseBiometricsReturn {
 
     const disableBiometrics = useCallback(async () => {
         try {
-            await SecureStore.deleteItemAsync(BIOMETRICS_CREDENTIALS_KEY);
-            await SecureStore.deleteItemAsync(BIOMETRICS_ENABLED_KEY);
+            await Promise.all([
+                SecureStore.deleteItemAsync(BIOMETRICS_TOKEN_KEY),
+                SecureStore.deleteItemAsync(BIOMETRICS_EMAIL_KEY),
+                SecureStore.deleteItemAsync(BIOMETRICS_ENABLED_KEY),
+            ]);
             setState(prev => ({ ...prev, isEnabled: false, storedEmail: null }));
         } catch (error) {
             console.error('Error disabling biometrics:', error);
         }
     }, []);
 
-    const authenticateWithBiometrics = useCallback(async (): Promise<{ email: string; password: string } | null> => {
+    const authenticateWithBiometrics = useCallback(async (): Promise<{ email: string; token: string } | null> => {
         try {
             // Check if enabled first
             const enabledValue = await SecureStore.getItemAsync(BIOMETRICS_ENABLED_KEY);
@@ -150,24 +156,20 @@ export function useBiometrics(): UseBiometricsReturn {
                 return null;
             }
 
-            // Authenticate
-            const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: 'Entre com sua biometria',
-                cancelLabel: 'Usar senha',
-                disableDeviceFallback: false,
+            const email = await SecureStore.getItemAsync(BIOMETRICS_EMAIL_KEY);
+            if (!email) {
+                return null;
+            }
+
+            const token = await SecureStore.getItemAsync(BIOMETRICS_TOKEN_KEY, {
+                requireAuthentication: true,
+                authenticationPrompt: 'Entre com sua biometria',
             });
-
-            if (!result.success) {
+            if (!token) {
                 return null;
             }
 
-            // Retrieve credentials
-            const credentialsJson = await SecureStore.getItemAsync(BIOMETRICS_CREDENTIALS_KEY);
-            if (!credentialsJson) {
-                return null;
-            }
-
-            return JSON.parse(credentialsJson);
+            return { email, token };
         } catch (error) {
             console.error('Error authenticating with biometrics:', error);
             return null;

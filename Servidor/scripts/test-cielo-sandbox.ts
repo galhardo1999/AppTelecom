@@ -3,9 +3,14 @@ import axios from 'axios';
 const MERCHANT_ID = process.env.CIELO_MERCHANT_ID;
 const MERCHANT_KEY = process.env.CIELO_MERCHANT_KEY;
 
+if (!MERCHANT_ID || !MERCHANT_KEY) {
+    console.error('Defina CIELO_MERCHANT_ID e CIELO_MERCHANT_KEY no ambiente antes de rodar este script.');
+    process.exit(1);
+}
+
 console.log('--- TESTE SANDBOX CIELO ---');
 console.log(`ID: ${MERCHANT_ID}`);
-console.log(`Key: ${MERCHANT_KEY}`);
+console.log(`Key: ${MERCHANT_KEY.slice(0, 4)}...${MERCHANT_KEY.slice(-4)}`);
 
 const sandboxClient = axios.create({
     baseURL: 'https://apisandbox.cieloecommerce.cielo.com.br',
@@ -29,7 +34,8 @@ async function testSandbox() {
         });
 
         console.log('✅ SUCESSO NO SANDBOX!');
-        console.log('Token:', response.data.CardToken);
+        const token = response.data.CardToken || '';
+        console.log('Token:', token ? `${token.slice(0, 4)}...${token.slice(-4)}` : '(sem token)');
     } catch (error: any) {
         console.error('❌ FALHA NO SANDBOX');
         if (error.response) {

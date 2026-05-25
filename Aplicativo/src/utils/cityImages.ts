@@ -3,7 +3,7 @@
  * Imagens ficam no servidor para permitir atualizações dinâmicas
  */
 
-const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3000';
+const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3001';
 
 // Mapeamento de ID da cidade para pasta e arquivos
 // Quando houver múltiplas imagens, adicione mais itens ao array
@@ -26,18 +26,17 @@ const CITY_IMAGES: Record<string, { folder: string; files: string[] }> = {
  */
 export const getCityImageUrls = (cityId: string | undefined): string[] => {
     if (!cityId) {
-        return [`${BFF_URL}/img/default`];
+        return [`${BFF_URL}/public/cities/default.jpg`];
     }
 
     const cityInfo = CITY_IMAGES[cityId];
 
     if (cityInfo) {
-        // Usa a nova rota /img/:cityId/:filename
         const urls = cityInfo.files.map(file =>
-            `${BFF_URL}/img/${cityId}/${encodeURIComponent(file)}`
+            `${BFF_URL}/public/cities/${encodeURIComponent(cityInfo.folder)}/${encodeURIComponent(file)}`
         );
         return urls;
     }
 
-    return [`${BFF_URL}/img/default`];
+    return [`${BFF_URL}/public/cities/default.jpg`];
 };

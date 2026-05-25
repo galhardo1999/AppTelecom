@@ -1,5 +1,4 @@
 import { Hero } from '@/components/Hero';
-import { Footer } from '@/components/Footer';
 import { WhatsAppButton } from '@/components/WhatsAppButton';
 
 export default function Home() {
@@ -10,4 +9,3 @@ export default function Home() {
     </main>
   );
 }
-

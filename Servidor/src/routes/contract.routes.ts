@@ -3,10 +3,11 @@
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { ixcService } from '../services/ixc/index.js';
 import { cieloService } from '../services/cielo.js';
 import { withErrorHandler } from '../middleware/errorHandler.js';
-import { cached } from '../services/cache.js';
+import { cached, invalidarCache } from '../services/cache.js';
 import { recurringCardSchema, validateBody } from '../middleware/validators.js';
 import type { JWTPayload } from '../types/index.js';
 
@@ -15,6 +16,57 @@ type Variables = {
 };
 
 const contractRoutes = new Hono<{ Variables: Variables }>();
+
+function validarIdRecurso(id: string | undefined, recurso: string) {
+    if (!id || !/^\d+$/.test(id)) {
+        return {
+            valido: false as const,
+            erro: { error: `${recurso} inválido` },
+        };
+    }
+
+    return { valido: true as const, id };
+}
+
+async function validarContratoDoUsuario(contractId: string, user: JWTPayload) {
+    const contrato = await ixcService.getContractById(contractId);
+    if (!contrato) {
+        return {
+            autorizado: false as const,
+            status: 404 as const,
+            erro: { error: 'Contrato não encontrado' },
+        };
+    }
+
+    if (contrato.id_cliente !== user.userId) {
+        return {
+            autorizado: false as const,
+            status: 403 as const,
+            erro: { error: 'Acesso negado: contrato não pertence ao usuário' },
+        };
+    }
+
+    return { autorizado: true as const, contrato };
+}
+
+function obterIpCliente(c: Context<{ Variables: Variables }>) {
+    const encaminhado = c.req.header('x-forwarded-for');
+    return encaminhado?.split(',')[0]?.trim()
+        || c.req.header('x-real-ip')
+        || 'IP não identificado';
+}
+
+async function invalidarCacheDoCliente(userId: string, contractId: string) {
+    await invalidarCache([
+        `contracts:${userId}`,
+        `contract-pdf:${contractId}`,
+        `usage:${userId}`,
+        `invoices:open:${userId}`,
+        `invoices:history:${userId}`,
+        `invoices:all:${userId}`,
+        `invoices:paid:${userId}`,
+    ]);
+}
 
 /**
  * GET /api/contracts
@@ -60,7 +112,17 @@ contractRoutes.get('/usage', withErrorHandler(
  */
 contractRoutes.post('/:contractId', withErrorHandler(
     async (c) => {
-        const contractId = c.req.param('contractId');
+        const user = c.get('user') as JWTPayload;
+        const validacao = validarIdRecurso(c.req.param('contractId'), 'Contrato');
+        if (!validacao.valido) {
+            return c.json(validacao.erro, 400);
+        }
+        const contractId = validacao.id;
+
+        const autorizacao = await validarContratoDoUsuario(contractId, user);
+        if (!autorizacao.autorizado) {
+            return c.json(autorizacao.erro, autorizacao.status);
+        }
 
         const base64Pdf = await cached(
             `contract-pdf:${contractId}`,
@@ -83,7 +145,17 @@ contractRoutes.post('/:contractId', withErrorHandler(
  */
 contractRoutes.put('/:contractId/recurring-card', withErrorHandler(
     async (c) => {
-        const contractId = c.req.param('contractId');
+        const user = c.get('user') as JWTPayload;
+        const validacaoId = validarIdRecurso(c.req.param('contractId'), 'Contrato');
+        if (!validacaoId.valido) {
+            return c.json(validacaoId.erro, 400);
+        }
+        const contractId = validacaoId.id;
+
+        const autorizacao = await validarContratoDoUsuario(contractId, user);
+        if (!autorizacao.autorizado) {
+            return c.json(autorizacao.erro, autorizacao.status);
+        }
 
         // Validar input com Zod
         const validation = await validateBody(c, recurringCardSchema);
@@ -111,20 +183,19 @@ contractRoutes.put('/:contractId/recurring-card', withErrorHandler(
         }
 
         // 2. Enviar dados do cartão + token para o IXC
-        const result = await ixcService.updateContractRecurringCard(contractId, {
-            cardNumber: cardNumber.replace(/\D/g, ''),
+        await ixcService.updateContractRecurringCard(contractId, {
+            ultimosDigitos: cardNumber.replace(/\D/g, '').slice(-4),
             holder: customerName || holder,
             expirationDate,
-            securityCode,
             brand: brand.toLowerCase(),
             token: cardToken,
         });
+        await invalidarCacheDoCliente(user.userId, contractId);
 
         return c.json({
             success: true,
             message: 'Cartão recorrente cadastrado com sucesso',
-            contractId,
-            data: result
+            contractId
         });
     },
     'Erro ao cadastrar cartão recorrente'
@@ -136,14 +207,24 @@ contractRoutes.put('/:contractId/recurring-card', withErrorHandler(
  */
 contractRoutes.delete('/:contractId/recurring-card', withErrorHandler(
     async (c) => {
-        const contractId = c.req.param('contractId');
+        const user = c.get('user') as JWTPayload;
+        const validacao = validarIdRecurso(c.req.param('contractId'), 'Contrato');
+        if (!validacao.valido) {
+            return c.json(validacao.erro, 400);
+        }
+        const contractId = validacao.id;
 
-        const result = await ixcService.deleteRecurringCard(contractId);
+        const autorizacao = await validarContratoDoUsuario(contractId, user);
+        if (!autorizacao.autorizado) {
+            return c.json(autorizacao.erro, autorizacao.status);
+        }
+
+        await ixcService.deleteRecurringCard(contractId);
+        await invalidarCacheDoCliente(user.userId, contractId);
 
         return c.json({
             success: true,
-            message: 'Cartão recorrente removido com sucesso',
-            data: result
+            message: 'Cartão recorrente removido com sucesso'
         });
     },
     'Erro ao remover cartão recorrente'
@@ -155,23 +236,25 @@ contractRoutes.delete('/:contractId/recurring-card', withErrorHandler(
  */
 contractRoutes.post('/:contractId/accept', withErrorHandler(
     async (c) => {
-        const contractId = c.req.param('contractId');
         const user = c.get('user') as JWTPayload;
-        const body = await c.req.json().catch(() => ({})); // Body is optional/ignored for sensitive data now
+        const validacao = validarIdRecurso(c.req.param('contractId'), 'Contrato');
+        if (!validacao.valido) {
+            return c.json(validacao.erro, 400);
+        }
+        const contractId = validacao.id;
 
-        // 1. Authorization: Verify if user owns the contract
-        const userContracts = await ixcService.getContracts(user.userId);
-        const ownsContract = userContracts.some((contract: any) => contract.id === contractId);
-
-        if (!ownsContract) {
-            return c.json({ error: 'Acesso negado: Contrato não pertence ao usuário' }, 403);
+        const autorizacao = await validarContratoDoUsuario(contractId, user);
+        if (!autorizacao.autorizado) {
+            return c.json(autorizacao.erro, autorizacao.status);
         }
 
+        const body = await c.req.json().catch(() => ({})) as { userAgent?: unknown };
+
         // 2. Server-side Data Generation for Integrity
-        // Extract IP from headers (trusting proxy if behind Vercel/Nginx)
-        const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'IP não identificado';
-        // Use provided userAgent or fallback using headers
-        const userAgent = body.userAgent || c.req.header('user-agent') || 'App Mobile';
+        const ip = obterIpCliente(c);
+        const userAgent = typeof body.userAgent === 'string' && body.userAgent.length <= 500
+            ? body.userAgent
+            : c.req.header('user-agent') || 'App Mobile';
         const timestamp = new Date().toISOString();
 
         const result = await ixcService.acceptContract(contractId, {
@@ -179,6 +262,7 @@ contractRoutes.post('/:contractId/accept', withErrorHandler(
             userAgent,
             timestamp
         });
+        await invalidarCacheDoCliente(user.userId, contractId);
 
         return c.json({
             success: true,

@@ -11,7 +11,7 @@ import type { RateLimitConfig, RateLimitEntry, JWTPayload } from '../types/index
 const rateLimitStore = new Map<string, RateLimitEntry>();
 
 // Limpar entradas expiradas periodicamente
-setInterval(() => {
+const limpezaRateLimit = setInterval(() => {
     const now = Date.now();
     for (const [key, entry] of rateLimitStore.entries()) {
         if (now > entry.resetTime) {
@@ -19,6 +19,8 @@ setInterval(() => {
         }
     }
 }, 60000);
+
+limpezaRateLimit.unref?.();
 
 /**
  * Factory de rate limiter
@@ -65,6 +67,32 @@ export function rateLimiter(config: RateLimitConfig) {
     };
 }
 
+export function verificarLimiteManual(identificador: string, config: RateLimitConfig) {
+    const now = Date.now();
+    const key = `ratelimit:${identificador}`;
+    let entry = rateLimitStore.get(key);
+
+    if (!entry || now > entry.resetTime) {
+        entry = {
+            count: 1,
+            resetTime: now + config.windowMs
+        };
+        rateLimitStore.set(key, entry);
+        return { permitido: true as const };
+    }
+
+    entry.count++;
+
+    if (entry.count > config.maxRequests) {
+        return {
+            permitido: false as const,
+            retryAfter: Math.ceil((entry.resetTime - now) / 1000),
+        };
+    }
+
+    return { permitido: true as const };
+}
+
 /**
  * Rate limiter para tentativas de login (mais restrito)
  */
@@ -72,6 +100,11 @@ export const loginRateLimiter = rateLimiter({
     windowMs: 60 * 1000,  // 1 minuto
     maxRequests: 10       // 10 tentativas por minuto
 });
+
+export const loginEmailRateLimitConfig = {
+    windowMs: 15 * 60 * 1000,
+    maxRequests: 8
+};
 
 /**
  * Rate limiter padrão para API

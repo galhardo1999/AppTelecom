@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import { CoverageForm } from './CoverageForm';
-import { Rocket } from 'lucide-react';
 
 export function Hero() {
     return (

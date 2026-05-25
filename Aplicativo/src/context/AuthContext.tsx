@@ -1,10 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authApi, setAccessToken, setOnUnauthorized } from '../services/api';
+import { authApi, bffApi, setAccessToken, setOnUnauthorized } from '../services/api';
 import { logger } from '../utils/logger';
 
 // Define User Type
-type User = {
+export type User = {
     id: string;
     razao: string; // Name
     hotsite_email: string;
@@ -19,6 +19,8 @@ type AuthContextType = {
     user: User | null;
     isLoading: boolean;
     signIn: (email: string, pass: string) => Promise<void>;
+    signInWithSession: (token: string, userData: User) => Promise<void>;
+    signInWithToken: (token: string) => Promise<void>;
     signOut: () => Promise<void>;
 };
 
@@ -65,26 +67,49 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
     }, []);
 
+    const persistSession = async (token: string, userData: User) => {
+        if (!token || !userData) {
+            throw new Error('Resposta inválida do servidor');
+        }
+
+        await Promise.all([
+            SecureStore.setItemAsync('access_token', token),
+            SecureStore.setItemAsync('user_session', JSON.stringify(userData)),
+        ]);
+
+        setAccessToken(token);
+        setUser(userData);
+    };
+
+    const signInWithSession = async (token: string, userData: User) => {
+        await persistSession(token, userData);
+    };
+
+    const signInWithToken = async (token: string) => {
+        try {
+            setAccessToken(token);
+            await SecureStore.setItemAsync('access_token', token);
+            const userData = await bffApi.getUser();
+            await SecureStore.setItemAsync('user_session', JSON.stringify(userData));
+            setUser(userData);
+        } catch (error: any) {
+            setAccessToken(null);
+            await Promise.all([
+                SecureStore.deleteItemAsync('access_token'),
+                SecureStore.deleteItemAsync('user_session'),
+            ]);
+            logger.error('Token login error:', error);
+            throw new Error(error.response?.data?.error || 'Sessão expirada');
+        }
+    };
+
     const signIn = async (email: string, pass: string) => {
         try {
             // Call BFF login endpoint
             const response = await authApi.login(email, pass);
 
             const { token, user: userData } = response;
-
-            if (!token || !userData) {
-                throw new Error('Resposta inválida do servidor');
-            }
-
-            // Store token and user data
-            await Promise.all([
-                SecureStore.setItemAsync('access_token', token),
-                SecureStore.setItemAsync('user_session', JSON.stringify(userData)),
-            ]);
-
-            // Set token in API client for subsequent requests
-            setAccessToken(token);
-            setUser(userData);
+            await persistSession(token, userData);
 
         } catch (error: any) {
             logger.error('Login error:', error);
@@ -111,7 +136,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
+        <AuthContext.Provider value={{ user, isLoading, signIn, signInWithSession, signInWithToken, signOut }}>
             {children}
         </AuthContext.Provider>
     );

@@ -4,6 +4,7 @@
 
 import { Context, Next } from 'hono';
 import { isDevelopment } from '../config/env.js';
+import { descreverErroSeguro } from '../utils/sanitizar.js';
 
 /**
  * Wrapper para handlers de rota com tratamento de erro automático
@@ -22,7 +23,7 @@ export function withErrorHandler<T>(
             console.error(`[ERROR:${errorId}] ${errorMessage}`);
             console.error(`  Path: ${c.req.path}`);
             console.error(`  Method: ${c.req.method}`);
-            console.error(`  Message: ${error.message}`);
+            console.error(`  Message: ${descreverErroSeguro(error)}`);
 
             if (isDevelopment) {
                 console.error(`  Stack: ${error.stack}`);
@@ -48,7 +49,7 @@ export async function globalErrorHandler(c: Context, next: Next) {
 
         console.error(`[UNHANDLED ERROR:${errorId}]`);
         console.error(`  Path: ${c.req.path}`);
-        console.error(`  Message: ${error.message}`);
+        console.error(`  Message: ${descreverErroSeguro(error)}`);
 
         return c.json({
             error: 'Erro interno no servidor',

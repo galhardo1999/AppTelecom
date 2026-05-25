@@ -6,8 +6,13 @@
 import axios from 'axios';
 import { Buffer } from 'buffer';
 
-const IXC_HOST = 'https://ixc.apollotelecom.com.br/webservice/v1';
-const IXC_TOKEN = '105:d403ff214a1690590664d0bbdcbb1a940febd9d8e5bea610067309050809f9da';
+const IXC_HOST = process.env.IXC_HOST;
+const IXC_TOKEN = process.env.IXC_TOKEN;
+
+if (!IXC_HOST || !IXC_TOKEN) {
+    console.error('Defina IXC_HOST e IXC_TOKEN no ambiente antes de rodar este script.');
+    process.exit(1);
+}
 
 const authHeader = `Basic ${Buffer.from(IXC_TOKEN).toString('base64')}`;
 
@@ -30,7 +35,7 @@ async function testGetPix() {
             id_areceber: INVOICE_ID
         });
         console.log('Status:', response.status);
-        console.log('Response:', JSON.stringify(response.data, null, 2));
+        console.log('Response type:', response.data?.type || typeof response.data);
     } catch (error: any) {
         console.log('❌ Erro:', error.response?.status, error.response?.data || error.message);
     }
@@ -104,7 +109,7 @@ async function testPixEndpoints() {
                 id: INVOICE_ID
             });
             console.log('✅ Funcionou! Status:', response.status);
-            console.log('Response:', JSON.stringify(response.data, null, 2));
+            console.log('Response type:', response.data?.type || typeof response.data);
         } catch (error: any) {
             console.log('❌', error.response?.status || 'Erro', '-', error.response?.data?.message || error.message);
         }

@@ -62,9 +62,6 @@ app.use('*', globalErrorHandler);
 app.use('*', cors({
     origin: (origin) => {
         if (!ALLOWED_ORIGINS || ALLOWED_ORIGINS.length === 0) {
-            if (!isDevelopment) {
-                console.warn('⚠️ CORS: Permitindo todas as origens em produção (configure ALLOWED_ORIGINS)');
-            }
             return origin;
         }
 
@@ -223,9 +220,9 @@ app.route('/auth', authRoutes);
 // ROTAS PROTEGIDAS DA API
 // ==========================================
 
-// Middleware de rate limiter + auth para TODAS as rotas /api/*
-app.use('/api/*', apiRateLimiter);
+// Middleware de auth + rate limiter para TODAS as rotas /api/*
 app.use('/api/*', authMiddleware);
+app.use('/api/*', apiRateLimiter);
 
 // Montar rotas protegidas
 app.route('/api/user', userRoutes);

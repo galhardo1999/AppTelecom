@@ -13,7 +13,12 @@ bun install
 
 # Rodar em desenvolvimento
 bun run dev
+
+# Rodar testes automatizados
+bun run test
 ```
+
+Copie `.env.example` para `.env` e preencha as credenciais reais fora do Git.
 
 ## Endpoints
 
@@ -29,6 +34,15 @@ bun run dev
 ## Deploy
 
 Recomendado: [Railway](https://railway.app) ou [Vercel](https://vercel.com)
+
+Variáveis obrigatórias em produção:
+
+- `IXC_HOST` com HTTPS
+- `IXC_TOKEN`
+- `IXC_TIMEOUT_MS` opcional, padrão `15000`
+- `JWT_SECRET` com 32+ caracteres
+- `ALLOWED_ORIGINS` com as origens permitidas
+- `CIELO_MERCHANT_ID` e `CIELO_MERCHANT_KEY`
 
 ```bash
 # Railway

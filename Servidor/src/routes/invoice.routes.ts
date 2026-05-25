@@ -14,6 +14,17 @@ type Variables = {
 
 const invoiceRoutes = new Hono<{ Variables: Variables }>();
 
+function validarIdRecurso(id: string | undefined, recurso: string) {
+    if (!id || !/^\d+$/.test(id)) {
+        return {
+            valido: false as const,
+            erro: { error: `${recurso} inválida` },
+        };
+    }
+
+    return { valido: true as const, id };
+}
+
 /**
  * GET /api/invoices
  * Obter faturas em aberto
@@ -43,24 +54,17 @@ invoiceRoutes.get('/history', withErrorHandler(
         const user = c.get('user') as JWTPayload;
 
         // Cache de 2 minutos para histórico
-        const [openInvoices, paidInvoices] = await Promise.all([
-            cached<IXCInvoice[]>(
-                `invoices:all:${user.userId}`,
-                () => ixcService.getAllInvoices(user.userId),
-                120
-            ),
-            cached<IXCInvoice[]>(
-                `invoices:paid:${user.userId}`,
-                () => ixcService.getPaidInvoices(user.userId),
-                120
-            )
-        ]);
+        const historico = await cached<IXCInvoice[]>(
+            `invoices:history:${user.userId}`,
+            () => ixcService.getAllInvoices(user.userId),
+            120
+        );
 
         const grouped: InvoiceHistoryResponse = {
-            abertas: openInvoices.filter((inv) => inv.status_classificado === 'A'),
-            vencidas: openInvoices.filter((inv) => inv.status_classificado === 'V'),
-            pagas: paidInvoices,
-            all: [...openInvoices, ...paidInvoices]
+            abertas: historico.filter((inv) => inv.status_classificado === 'A'),
+            vencidas: historico.filter((inv) => inv.status_classificado === 'V'),
+            pagas: historico.filter((inv) => inv.status_classificado === 'P'),
+            all: historico
         };
 
         return c.json(grouped);
@@ -74,7 +78,20 @@ invoiceRoutes.get('/history', withErrorHandler(
  */
 invoiceRoutes.post('/pix/:invoiceId', withErrorHandler(
     async (c) => {
-        const invoiceId = c.req.param('invoiceId');
+        const user = c.get('user') as JWTPayload;
+        const validacao = validarIdRecurso(c.req.param('invoiceId'), 'Fatura');
+        if (!validacao.valido) {
+            return c.json(validacao.erro, 400);
+        }
+        const invoiceId = validacao.id;
+
+        const invoice = await ixcService.getInvoiceById(invoiceId);
+        if (!invoice) {
+            return c.json({ error: 'Fatura não encontrada' }, 404);
+        }
+        if (invoice.id_cliente !== user.userId) {
+            return c.json({ error: 'Acesso negado: fatura não pertence ao usuário' }, 403);
+        }
 
         // PIX não deve ser cacheado (pode mudar)
         const pixCode = await ixcService.getPixCode(invoiceId);
@@ -94,7 +111,20 @@ invoiceRoutes.post('/pix/:invoiceId', withErrorHandler(
  */
 invoiceRoutes.post('/boleto/:invoiceId', withErrorHandler(
     async (c) => {
-        const invoiceId = c.req.param('invoiceId');
+        const user = c.get('user') as JWTPayload;
+        const validacao = validarIdRecurso(c.req.param('invoiceId'), 'Fatura');
+        if (!validacao.valido) {
+            return c.json(validacao.erro, 400);
+        }
+        const invoiceId = validacao.id;
+
+        const invoice = await ixcService.getInvoiceById(invoiceId);
+        if (!invoice) {
+            return c.json({ error: 'Fatura não encontrada' }, 404);
+        }
+        if (invoice.id_cliente !== user.userId) {
+            return c.json({ error: 'Acesso negado: fatura não pertence ao usuário' }, 403);
+        }
 
         // Boleto pode ser cacheado por 5 minutos
         const base64Pdf = await cached(

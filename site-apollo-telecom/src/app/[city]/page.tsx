@@ -5,7 +5,7 @@ import { PlanCard } from '@/components/PlanCard';
 import { FeaturesSection } from '@/components/FeaturesSection';
 import { CameraSection } from '@/components/CameraSection';
 import { Footer } from '@/components/Footer';
-import { getPlansForCity, formatCityName } from '@/data/plans';
+import { formatCityName, getPlansForCity, hasCityPage } from '@/data/plans';
 import { notFound } from 'next/navigation';
 
 interface PageProps {
@@ -27,6 +27,10 @@ export default async function CityPage(props: PageProps) {
     }
 
     const { city } = params;
+    if (!hasCityPage(city)) {
+        return notFound();
+    }
+
     const cityName = formatCityName(city);
     const plans = getPlansForCity(city);
 

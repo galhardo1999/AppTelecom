@@ -155,3 +155,7 @@ export async function cached<T>(
 
     return freshValue;
 }
+
+export async function invalidarCache(keys: string[]): Promise<void> {
+    await Promise.allSettled(keys.map((key) => cacheStore.delete(key)));
+}

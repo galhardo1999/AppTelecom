@@ -17,7 +17,7 @@ export const formatCurrency = (val: string | number): string => {
  */
 export const formatDateShort = (dateString: string): string => {
     if (!dateString) return '';
-    const [year, month, day] = dateString.split('-');
+    const [, month, day] = dateString.split('-');
     return `${day}/${month}`;
 };
 
@@ -35,7 +35,7 @@ export const formatDateFull = (dateString: string): string => {
  */
 export const getMonthName = (dateString: string): string => {
     if (!dateString) return '';
-    const [year, month] = dateString.split('-');
+    const [, month] = dateString.split('-');
     const months = [
         'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'

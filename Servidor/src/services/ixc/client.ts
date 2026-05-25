@@ -4,6 +4,7 @@
 
 import CryptoJS from 'crypto-js';
 import { ixcClient } from './http-client.js';
+import { descreverErroSeguro } from '../../utils/sanitizar.js';
 
 export interface IXCClient {
     id: string;
@@ -24,26 +25,53 @@ export interface IXCClient {
 }
 
 /**
- * Buscar cliente pelo email do hotsite
+ * Buscar clientes pelo email do hotsite.
+ * O IXC pode permitir e-mails duplicados; quem autentica precisa resolver a ambiguidade.
  */
-export async function findClientByEmail(email: string): Promise<IXCClient | null> {
+export async function findClientsByEmail(email: string): Promise<IXCClient[]> {
     try {
         const response = await ixcClient.post('/cliente', {
             qtype: 'cliente.hotsite_email',
             query: email,
             oper: '=',
             page: '1',
-            rp: '1',
+            rp: '20',
             sortname: 'cliente.id',
             sortorder: 'desc'
         });
 
-        if (response.data?.registros?.length > 0) {
-            return response.data.registros[0];
-        }
-        return null;
+        return response.data?.registros || [];
     } catch (error) {
-        console.error('IXC findClientByEmail error:', error);
+        console.error('IXC findClientsByEmail error:', descreverErroSeguro(error));
+        throw error;
+    }
+}
+
+/**
+ * Buscar cliente pelo email do hotsite.
+ * Mantido para compatibilidade com chamadas antigas; prefira findClientsByEmail no login.
+ */
+export async function findClientByEmail(email: string): Promise<IXCClient | null> {
+    const clientes = await findClientsByEmail(email);
+    return clientes[0] || null;
+}
+
+/**
+ * Buscar cliente pelo ID do IXC.
+ */
+export async function findClientById(clientId: string): Promise<IXCClient | null> {
+    try {
+        const response = await ixcClient.post('/cliente', {
+            qtype: 'cliente.id',
+            query: clientId,
+            oper: '=',
+            page: '1',
+            rp: '1',
+        });
+
+        return response.data?.registros?.[0] || null;
+    } catch (error) {
+        console.error('IXC findClientById error:', descreverErroSeguro(error));
         throw error;
     }
 }

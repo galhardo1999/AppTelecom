@@ -86,6 +86,18 @@ export function getPlansForCity(city: string) {
     return CITY_PLANS[normalizedCity] || CITY_PLANS['default'];
 }
 
+export function hasCityPage(city: string) {
+    const normalizedCity = city.toLowerCase();
+    return normalizedCity in CITY_PLANS || [
+        'panorama',
+        'pauliceia',
+        'paulicéia',
+        'santa-mercedes',
+        'presidente-venceslau',
+        'bento-de-abreu',
+    ].includes(normalizedCity);
+}
+
 export function formatCityName(slug: string) {
     const cityMap: Record<string, string> = {
         'aracatuba': 'Araçatuba',

@@ -111,7 +111,7 @@ export default function SuporteScreen() {
 
     const openWhatsApp = (message?: string) => {
         const text = message ? encodeURIComponent(message) : '';
-        Linking.openURL(`https://wa.me/551808008710606${text ? `?text=${text}` : ''}`);
+        Linking.openURL(`https://wa.me/551838710606${text ? `?text=${text}` : ''}`);
     };
 
     const callSupport = () => {

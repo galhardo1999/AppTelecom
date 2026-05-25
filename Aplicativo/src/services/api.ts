@@ -1,8 +1,8 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { create, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { logger } from '../utils/logger';
 
-const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3000';
+const BFF_URL = process.env.EXPO_PUBLIC_BFF_URL || 'http://localhost:3001';
 
 // Callback simples para erros de auth 401 (compatível com React Native)
 let onUnauthorizedCallback: (() => void) | null = null;
@@ -12,7 +12,7 @@ export const setOnUnauthorized = (callback: (() => void) | null) => {
 };
 
 // Criar instância do axios apontando para o BFF
-const api = axios.create({
+const api = create({
     baseURL: BFF_URL,
     headers: {
         'Content-Type': 'application/json',

@@ -3,6 +3,7 @@
  */
 
 import { ixcClient } from './http-client.js';
+import { descreverErroSeguro } from '../../utils/sanitizar.js';
 
 /**
  * Buscar nome da cidade pelo ID
@@ -18,7 +19,7 @@ export async function getCityName(cityId: string): Promise<string> {
         const city = response.data?.registros?.[0];
         return city?.nome || '';
     } catch (error) {
-        console.error('IXC getCityName error:', error);
+        console.error('IXC getCityName error:', descreverErroSeguro(error));
         return '';
     }
 }
@@ -37,7 +38,7 @@ export async function getStateName(stateId: string): Promise<string> {
         const state = response.data?.registros?.[0];
         return state?.uf || state?.nome || '';
     } catch (error) {
-        console.error('IXC getStateName error:', error);
+        console.error('IXC getStateName error:', descreverErroSeguro(error));
         return '';
     }
 }

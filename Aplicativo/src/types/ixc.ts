@@ -60,7 +60,6 @@ export interface RadUsuario {
     id: string;
     id_cliente: string;
     login: string;
-    senha: string;
     ip: string;
     mac: string;
     online: string;

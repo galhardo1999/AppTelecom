@@ -77,7 +77,7 @@ export default function HomeScreen() {
             }
             // Se mais de 1 contrato, needsContractSelection será true e mostrará a tela de seleção
         }
-    }, [contractsLoading, contracts.length]);
+    }, [contractsLoading, contracts.length, setHasUserSelectedContract]);
 
     // Função para selecionar contrato da tela inicial
     const handleInitialContractSelect = (contract: Contract) => {
@@ -109,9 +109,6 @@ export default function HomeScreen() {
     ) || [];
     const hasOverdue = overdueInvoicesForContract.length > 0;
     const overdueInvoice = hasOverdue ? overdueInvoicesForContract[0] : null;
-
-    // Verificar se o contrato tem pendências (pré-contrato aguardando assinatura)
-    const hasPendencias = selectedContract?.status === 'P' && selectedContract?.status_internet === 'AA';
 
     const handleSelectContract = (contract: Contract) => {
         setSelectedContract(contract);

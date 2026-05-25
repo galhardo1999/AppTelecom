@@ -81,7 +81,12 @@ export function ContractPickerModal({
                                             <Text className={`font-bold text-base ${isSelected ? 'text-purple-700' : 'text-slate-700'}`}>
                                                 {contract.id} - {contract.contrato}
                                             </Text>
-
+                                        </View>
+                                        <View className={`mt-2 self-start flex-row items-center px-2 py-1 rounded-full ${statusInfo.color}`}>
+                                            <View className={`w-2 h-2 rounded-full mr-1.5 ${statusInfo.dotColor}`} />
+                                            <Text className={`text-xs font-semibold ${statusInfo.textColor}`}>
+                                                {statusInfo.label}
+                                            </Text>
                                         </View>
                                         <Text className="text-slate-500 text-sm mt-1" numberOfLines={2}>
                                             {contract.endereco ?

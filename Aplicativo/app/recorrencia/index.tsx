@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     ScrollView,
     Text,
     TouchableOpacity,
@@ -16,10 +15,6 @@ import { CreditCardPreview } from '../../src/components/CreditCardPreview';
 import { useContract } from '../../src/context/ContractContext';
 import { useScreenSecurity } from '../../src/hooks/useScreenSecurity';
 import { bffApi } from '../../src/services/api';
-
-const { width } = Dimensions.get('window');
-
-
 
 export default function CobrancaRecorrenteScreen() {
     const router = useRouter();
@@ -72,7 +67,7 @@ export default function CobrancaRecorrenteScreen() {
                             await refreshContracts();
                             setSavedCard(null);
                             Alert.alert('Sucesso', 'Cartão removido com sucesso.');
-                        } catch (error) {
+                        } catch {
                             Alert.alert('Erro', 'Falha ao remover cartão.');
                         } finally {
                             setLoading(false);

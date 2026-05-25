@@ -4,11 +4,10 @@ import { File as ExpoFile, Paths } from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     Image,
     Modal,
     Platform,
@@ -35,12 +34,10 @@ import { showToast } from '../../src/utils/toast';
 
 type TabType = 'vencidas' | 'abertas' | 'pagas';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function FaturasScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const { contracts, selectedContract, selectedContractId, setSelectedContract } = useContract();
+    const { contracts, selectedContractId, setSelectedContract } = useContract();
 
     // Prevenir screenshots em tela de dados financeiros
     useScreenSecurity(true);
@@ -49,6 +46,10 @@ export default function FaturasScreen() {
     const [showPicker, setShowPicker] = useState(false);
     const [activeTab, setActiveTab] = useState<TabType>('vencidas');
     const [showContractPicker, setShowContractPicker] = useState(false);
+    const [loadingPix, setLoadingPix] = useState(false);
+    const [loadingBoleto, setLoadingBoleto] = useState(false);
+    const [showBoletoModal, setShowBoletoModal] = useState(false);
+    const [boletoBase64, setBoletoBase64] = useState<string | null>(null);
 
     // Obter nome completo para saudação
     const fullName = formatFullName(user?.razao);
@@ -57,7 +58,7 @@ export default function FaturasScreen() {
     const { data: invoiceData, isLoading: loading, isError, refetch } = useInvoiceHistory();
 
     // Obter fatura do mês atual (apenas a fatura aberta mais recente do mês atual)
-    const getCurrentMonthInvoice = (invoices: Invoice[]): Invoice[] => {
+    const getCurrentMonthInvoice = useCallback((invoices: Invoice[]): Invoice[] => {
         if (!invoices || invoices.length === 0) return [];
 
         const now = new Date();
@@ -72,10 +73,10 @@ export default function FaturasScreen() {
 
         // Se não houver fatura do mês atual, retornar a primeira (mais recente)
         return currentMonthInvoice ? [currentMonthInvoice] : [invoices[0]];
-    };
+    }, []);
 
     // Obter faturas para a aba atual filtradas por contrato
-    const getInvoicesForTab = (): Invoice[] => {
+    const currentInvoices = useMemo((): Invoice[] => {
         if (!invoiceData) return [];
 
         let invoices: Invoice[] = [];
@@ -100,9 +101,7 @@ export default function FaturasScreen() {
         }
 
         return invoices;
-    };
-
-    const currentInvoices = getInvoicesForTab();
+    }, [activeTab, getCurrentMonthInvoice, invoiceData, selectedContractId]);
 
     // Definir fatura selecionada padrão quando dados carregam ou aba muda
     useEffect(() => {
@@ -111,7 +110,7 @@ export default function FaturasScreen() {
         } else {
             setSelectedInvoice(null);
         }
-    }, [invoiceData, activeTab, selectedContractId]);
+    }, [currentInvoices]);
 
     // Auto-redirecionar para aba Vencidas se houver faturas vencidas ao ganhar foco
     useFocusEffect(
@@ -154,11 +153,6 @@ export default function FaturasScreen() {
             </View>
         );
     }
-
-    const [loadingPix, setLoadingPix] = useState(false);
-    const [loadingBoleto, setLoadingBoleto] = useState(false);
-    const [showBoletoModal, setShowBoletoModal] = useState(false);
-    const [boletoBase64, setBoletoBase64] = useState<string | null>(null);
 
     const handleCopyBarcode = async () => {
         if (selectedInvoice?.linha_digitavel) {

@@ -1,4 +1,5 @@
-import { cieloService } from './services/cielo.js';
+import { cieloService } from '../src/services/cielo.js';
+import { mascararToken } from '../src/utils/sanitizar.js';
 
 console.log('--- TESTE DE CREDENCIAIS CIELO ---');
 console.log(`MerchantId: '${process.env.CIELO_MERCHANT_ID}' (Length: ${process.env.CIELO_MERCHANT_ID?.length})`);
@@ -11,7 +12,6 @@ async function testCieloCredentials() {
         console.log('\nTentando tokenizar um cartão de teste...');
 
         // Dados fictícios para teste
-        // Dados fictícios para teste
         const token = await cieloService.tokenizeCardWithRetry({
             customerName: 'TESTE VALIDACAO',
             cardNumber: '0000000000000001', // Número inválido intencionalmente
@@ -21,7 +21,7 @@ async function testCieloCredentials() {
             securityCode: '123'
         });
 
-        console.log('\n✅ Token Gerado:', token);
+        console.log('\n✅ Token Gerado:', mascararToken(token));
 
         console.log('\nValidando token...');
         const isValid = await cieloService.validateToken(token);

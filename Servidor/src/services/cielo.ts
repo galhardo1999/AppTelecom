@@ -10,6 +10,7 @@ import {
     CIELO_API_URL,
     CIELO_QUERY_API_URL,
 } from '../config/env.js';
+import { mascararToken, sanitizarDadosSensiveis } from '../utils/sanitizar.js';
 
 const cieloClient = axios.create({
     baseURL: CIELO_API_URL,
@@ -32,8 +33,8 @@ const cieloQueryClient = axios.create({
 /**
  * Logger específico para integração IXC + Cielo
  */
-const logIXCIntegration = (step: string, data: any) => {
-    console.log(`[IXC-CIELO] ${step}:`, JSON.stringify(data, null, 2));
+const logIntegracaoIXC = (etapa: string, dados: unknown) => {
+    console.log(`[IXC-CIELO] ${etapa}:`, JSON.stringify(sanitizarDadosSensiveis(dados), null, 2));
 };
 
 /**
@@ -52,6 +53,12 @@ function mapBrandToCielo(brand: string): string {
 }
 
 const SUPPORTED_BRANDS = ['visa', 'mastercard', 'elo', 'amex', 'hipercard', 'diners'];
+
+function validarCredenciaisCielo() {
+    if (!CIELO_MERCHANT_ID || !CIELO_MERCHANT_KEY) {
+        throw new Error('Credenciais da Cielo não configuradas');
+    }
+}
 
 export interface CardData {
     customerName: string;
@@ -86,7 +93,7 @@ export const cieloService = {
      */
     validateToken: async (cardToken: string): Promise<boolean> => {
         try {
-            console.log('[CIELO] Validando token:', cardToken);
+            console.log('[CIELO] Validando token:', mascararToken(cardToken));
 
             // A Cielo não tem endpoint direto de validação
             // Mas podemos tentar buscar os dados do token
@@ -125,8 +132,9 @@ export const cieloService = {
         if (!cieloService.validateBrand(cardData.brand)) {
             throw new Error(`Bandeira ${cardData.brand} não é suportada`);
         }
+        validarCredenciaisCielo();
 
-        logIXCIntegration('Início tokenização', {
+        logIntegracaoIXC('Início tokenização', {
             bandeira: cardData.brand,
             ultimos_digitos: cardData.cardNumber.slice(-4),
         });
@@ -150,21 +158,21 @@ export const cieloService = {
 
             const response = await cieloClient.post('/1/card/', payload);
 
-            logIXCIntegration('Token gerado', {
-                token: response.data.CardToken,
+            logIntegracaoIXC('Token gerado', {
+                token: mascararToken(response.data.CardToken),
                 success: true,
             });
 
             return response.data.CardToken;
 
         } catch (error: any) {
-            logIXCIntegration('Erro tokenização', {
+            logIntegracaoIXC('Erro tokenização', {
                 error: error.response?.data || error.message,
             });
 
             // Tratar erros específicos da Cielo
             if (error.response?.status === 400) {
-                const cieloErrors = error.response.data;
+                const cieloErrors = sanitizarDadosSensiveis(error.response.data);
                 throw new Error(`Erro Cielo: ${JSON.stringify(cieloErrors)}`);
             }
 

@@ -3,11 +3,12 @@
  */
 
 import { Hono } from 'hono';
-import { loginRateLimiter } from '../middleware/rateLimiter.js';
+import { loginEmailRateLimitConfig, loginRateLimiter, verificarLimiteManual } from '../middleware/rateLimiter.js';
 import { generateToken } from '../middleware/auth.js';
 import { ixcService } from '../services/ixc/index.js';
 import { cached } from '../services/cache.js';
 import { loginSchema, validateBody } from '../middleware/validators.js';
+import { descreverErroSeguro } from '../utils/sanitizar.js';
 import type { JWTPayload, LoginResponse } from '../types/index.js';
 
 const authRoutes = new Hono();
@@ -25,30 +26,43 @@ authRoutes.post('/login', loginRateLimiter, async (c) => {
         }
 
         const { email, password } = validation.data;
-
-        // Buscar cliente no IXC
-        const client = await ixcService.findClientByEmail(email);
-
-        if (!client) {
-            return c.json({ error: 'Email não encontrado' }, 401);
+        const limiteEmail = verificarLimiteManual(`login-email:${email.toLowerCase()}`, loginEmailRateLimitConfig);
+        if (!limiteEmail.permitido) {
+            c.header('Retry-After', limiteEmail.retryAfter.toString());
+            return c.json({
+                error: 'Muitas tentativas de login. Tente novamente mais tarde.',
+                retryAfter: limiteEmail.retryAfter
+            }, 429);
         }
 
-        // Verificar se cliente está ativo
+        // Buscar clientes no IXC. E-mail duplicado precisa ser resolvido pela senha.
+        const clientes = await ixcService.findClientsByEmail(email);
+
+        if (clientes.length === 0) {
+            return c.json({ error: 'Email ou senha inválidos' }, 401);
+        }
+
+        const clientesComSenhaValida = clientes.filter((cliente) =>
+            cliente.senha && ixcService.validatePassword(password, cliente.senha)
+        );
+
+        if (clientesComSenhaValida.length === 0) {
+            return c.json({ error: 'Email ou senha inválidos' }, 401);
+        }
+
+        if (clientesComSenhaValida.length > 1) {
+            return c.json({
+                error: 'Encontramos mais de um cadastro com este e-mail. Entre em contato com o suporte para atualizar seus dados.'
+            }, 409);
+        }
+
+        const client = clientesComSenhaValida[0];
+
+        // Verificar se cliente está ativo somente após validar a senha
         if (client.ativo === 'N') {
             return c.json({
                 error: 'Não foi possível acessar sua conta. Entre em contato com o suporte no número 0800 871 0606'
             }, 403);
-        }
-
-        // Validar senha
-        if (!client.senha) {
-            return c.json({ error: 'Cadastro sem senha. Contate o suporte.' }, 401);
-        }
-
-        const isValidPassword = ixcService.validatePassword(password, client.senha);
-
-        if (!isValidPassword) {
-            return c.json({ error: 'Senha incorreta' }, 401);
         }
 
         // Gerar JWT
@@ -82,7 +96,7 @@ authRoutes.post('/login', loginRateLimiter, async (c) => {
         return c.json(response);
 
     } catch (error: any) {
-        console.error('[AUTH] Login error:', error.message);
+        console.error('[AUTH] Login error:', descreverErroSeguro(error));
         return c.json({ error: 'Erro interno no servidor' }, 500);
     }
 });

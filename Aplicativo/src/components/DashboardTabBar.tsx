@@ -88,7 +88,6 @@ export function DashboardTabBar({ state, descriptors, navigation }: MaterialTopT
                         accessibilityRole="button"
                         accessibilityState={isFocused ? { selected: true } : {}}
                         accessibilityLabel={options.tabBarAccessibilityLabel}
-                        testID={options.tabBarTestID}
                         onPress={onPress}
                         onLongPress={onLongPress}
                         style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}

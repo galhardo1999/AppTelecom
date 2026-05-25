@@ -3,7 +3,7 @@ import Link from 'next/link';
 export function WhatsAppButton() {
     return (
         <Link
-            href="https://wa.me/5500000000000"
+            href="https://wa.me/551838710606"
             target="_blank"
             className="fixed bottom-6 right-6 z-50 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform animate-bounce hover:animate-none flex items-center justify-center"
             aria-label="Fale conosco no WhatsApp"

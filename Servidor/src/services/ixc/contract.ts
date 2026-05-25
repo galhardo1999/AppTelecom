@@ -4,6 +4,7 @@
 
 import { ixcClient, ixcUpdateClient, debugLog } from './http-client.js';
 import { getCityName, getStateName } from './location.js';
+import { mascararCartao, sanitizarDadosSensiveis, descreverErroSeguro } from '../../utils/sanitizar.js';
 
 /**
  * Campos que NÃO devem ser reenviados no PUT (causam validações indesejadas no IXC)
@@ -39,6 +40,58 @@ function sanitizePayload(payload: Record<string, any>): Record<string, any> {
     return clean;
 }
 
+function respostaSucessoIXC(dados: any): boolean {
+    return dados?.type === 'success';
+}
+
+async function atualizarContratoComFallback(
+    contractId: string,
+    payloadParcial: Record<string, any>,
+    payloadCompleto: Record<string, any>,
+    contexto: string
+) {
+    try {
+        debugLog('CONTRACT', `Payload parcial ${contexto}:`, JSON.stringify(sanitizarDadosSensiveis(payloadParcial), null, 2));
+        const response = await ixcUpdateClient.put(`/cliente_contrato/${contractId}`, payloadParcial);
+
+        if (respostaSucessoIXC(response.data)) {
+            return response.data;
+        }
+
+        debugLog('CONTRACT', `IXC recusou payload parcial ${contexto}, tentando payload completo sanitizado`, sanitizarDadosSensiveis(response.data));
+    } catch (error: any) {
+        const status = error.response?.status;
+        if (status && status !== 400 && status !== 422) {
+            throw error;
+        }
+
+        debugLog('CONTRACT', `Erro de validação no payload parcial ${contexto}, tentando payload completo sanitizado`, sanitizarDadosSensiveis(error.response?.data || error.message));
+    }
+
+    debugLog('CONTRACT', `Payload completo ${contexto}:`, JSON.stringify(sanitizarDadosSensiveis(payloadCompleto), null, 2));
+    const response = await ixcUpdateClient.put(`/cliente_contrato/${contractId}`, payloadCompleto);
+
+    if (!respostaSucessoIXC(response.data)) {
+        console.error(`[CONTRACT] Erro IXC ${contexto}:`, sanitizarDadosSensiveis(response.data));
+        throw new Error(`IXC recusou ${contexto}`);
+    }
+
+    return response.data;
+}
+
+function sanitizarContratoParaCliente(contrato: Record<string, any>): Record<string, any> {
+    const limpo = { ...contrato };
+    delete limpo.credit_card_recorrente_token;
+    delete limpo.credit_card_recorrente_cvv_cartao;
+    delete limpo.credit_card_recorrente_security_code;
+
+    if (typeof limpo.credit_card_recorrente_numero_cartao === 'string') {
+        limpo.credit_card_recorrente_numero_cartao = mascararCartao(limpo.credit_card_recorrente_numero_cartao);
+    }
+
+    return limpo;
+}
+
 /**
  * Buscar contrato completo por ID (uso interno)
  */
@@ -56,6 +109,20 @@ async function fetchContract(contractId: string): Promise<any> {
         throw new Error(`Contrato ${contractId} não encontrado`);
     }
     return contract;
+}
+
+/**
+ * Buscar contrato por ID para validação de propriedade.
+ */
+export async function getContractById(contractId: string): Promise<any | null> {
+    try {
+        return await fetchContract(contractId);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('não encontrado')) {
+            return null;
+        }
+        throw error;
+    }
 }
 
 /**
@@ -78,7 +145,7 @@ export async function getContracts(clientId: string) {
 
         if (contracts.length > 0) {
             const c = contracts[0];
-            debugLog('CONTRACT', `Contrato ${c.id} - Cartão: ${c.credit_card_recorrente_numero_cartao?.substring(0, 4)}... | Carteira: ${c.id_carteira_cobranca}`);
+            debugLog('CONTRACT', `Contrato ${c.id} - Cartão: ${mascararCartao(c.credit_card_recorrente_numero_cartao || '')} | Carteira: ${c.id_carteira_cobranca}`);
         }
 
         // Buscar dados do cliente como fallback para endereço
@@ -112,7 +179,7 @@ export async function getContracts(clientId: string) {
                 estadoNome = await getStateName(estadoId);
             }
 
-            return {
+            return sanitizarContratoParaCliente({
                 ...contract,
                 descricao_aux_plano_venda: contract.descricao_aux_plano_venda || '',
                 endereco,
@@ -121,12 +188,12 @@ export async function getContracts(clientId: string) {
                 cidade: cidadeNome,
                 cidadeId: cidadeId,
                 estado: estadoNome,
-            };
+            });
         }));
 
         return processedContracts;
     } catch (error) {
-        console.error('IXC getContracts error:', error);
+        console.error('IXC getContracts error:', descreverErroSeguro(error));
         throw error;
     }
 }
@@ -152,7 +219,7 @@ export async function getContractPdf(contractId: string): Promise<string | null>
         }
         return null;
     } catch (error) {
-        console.error('IXC getContractPdf error:', error);
+        console.error('IXC getContractPdf error:', descreverErroSeguro(error));
         throw error;
     }
 }
@@ -163,10 +230,9 @@ export async function getContractPdf(contractId: string): Promise<string | null>
  * - Altera carteira de cobrança para 3 (recorrente)
  */
 export async function updateContractRecurringCard(contractId: string, cardData: {
-    cardNumber: string;
+    ultimosDigitos: string;
     holder: string;
     expirationDate: string;
-    securityCode: string;
     brand: string;
     token: string;
 }) {
@@ -175,30 +241,25 @@ export async function updateContractRecurringCard(contractId: string, cardData: 
 
         const currentContract = await fetchContract(contractId);
 
-        const payload = sanitizePayload({
-            ...currentContract,
+        const payloadParcial = {
             id_carteira_cobranca: '3',
             credit_card_recorrente_bandeira_cartao: cardData.brand.charAt(0).toUpperCase() + cardData.brand.slice(1),
-            credit_card_recorrente_numero_cartao: cardData.cardNumber,
+            credit_card_recorrente_numero_cartao: `************${cardData.ultimosDigitos}`,
             credit_card_recorrente_nome_cartao: cardData.holder,
             credit_card_recorrente_validade_cartao: cardData.expirationDate,
             credit_card_recorrente_token: cardData.token,
+        };
+
+        const payloadCompleto = sanitizePayload({
+            ...currentContract,
+            ...payloadParcial,
         });
 
-        debugLog('CONTRACT', 'Payload Update:', JSON.stringify(payload, null, 2));
+        const response = await atualizarContratoComFallback(contractId, payloadParcial, payloadCompleto, 'atualização de cartão recorrente');
 
-        const response = await ixcUpdateClient.put(`/cliente_contrato/${contractId}`, payload);
-
-        debugLog('CONTRACT', 'Resposta IXC:', JSON.stringify(response.data));
-
-        if (response.data.type !== 'success') {
-            console.error('[CONTRACT] Erro IXC:', response.data);
-            throw new Error(JSON.stringify({ ...response.data, payload_sent: payload }));
-        }
-
-        return response.data;
+        return response;
     } catch (error: any) {
-        console.error('IXC updateContractRecurringCard error:', error.response?.data || error.message);
+        console.error('IXC updateContractRecurringCard error:', descreverErroSeguro(error.response?.data || error.message));
         throw error;
     }
 }
@@ -229,35 +290,29 @@ export async function acceptContract(contractId: string, acceptanceData: {
 
         const obsAceite = `Contrato aceito digitalmente via App Apollo Telecom.\nData: ${acceptanceData.timestamp}\nIP: ${acceptanceData.ip}\nDispositivo: ${acceptanceData.userAgent}`;
 
-        // Primeiro sanitiza o objeto atual para remover campos protegidos
-        const payload = sanitizePayload({
-            ...currentContract,
+        const payloadParcial = {
             data_ativacao: acceptanceData.timestamp.split('T')[0].split('-').reverse().join('/'), // DD/MM/YYYY
-            obs: (currentContract.obs ? currentContract.obs + '\n\n' : '') + obsAceite
+            obs: (currentContract.obs ? currentContract.obs + '\n\n' : '') + obsAceite,
+            status: 'A',
+        };
+
+        const payloadCompleto = sanitizePayload({
+            ...currentContract,
+            ...payloadParcial,
         });
+        payloadCompleto.status = payloadParcial.status;
 
-        // Força o status A (Ativo) após sanitização, pois 'status' está na lista de exclusão
-        payload.status = 'A';
-
-        debugLog('CONTRACT', 'Payload Aceite:', JSON.stringify(payload, null, 2));
-
-        const response = await ixcUpdateClient.put(`/cliente_contrato/${contractId}`, payload);
-
-        if (response.data.type !== 'success') {
-            console.error('[CONTRACT] Erro IXC ao aceitar contrato:', response.data);
-            throw new Error(JSON.stringify({ ...response.data, payload_sent: payload }));
-        }
-
+        const response = await atualizarContratoComFallback(contractId, payloadParcial, payloadCompleto, 'aceite do contrato');
         debugLog('CONTRACT', 'Contrato ativado com sucesso');
 
         return {
             success: true,
             message: 'Contrato aceito com sucesso',
             contractId,
-            data: response.data
+            data: response
         };
     } catch (error: any) {
-        console.error('IXC acceptContract error:', error.response?.data || error.message);
+        console.error('IXC acceptContract error:', descreverErroSeguro(error.response?.data || error.message));
         throw error;
     }
 }
@@ -272,8 +327,7 @@ export async function deleteRecurringCard(contractId: string) {
 
         const currentContract = await fetchContract(contractId);
 
-        const payload = sanitizePayload({
-            ...currentContract,
+        const payloadParcial = {
             id_carteira_cobranca: '13',
             credit_card_recorrente_bandeira_cartao: '',
             credit_card_recorrente_numero_cartao: '',
@@ -281,18 +335,16 @@ export async function deleteRecurringCard(contractId: string) {
             credit_card_recorrente_validade_cartao: '',
             credit_card_recorrente_cvv_cartao: '',
             credit_card_recorrente_token: '',
+        };
+
+        const payloadCompleto = sanitizePayload({
+            ...currentContract,
+            ...payloadParcial,
         });
 
-        const response = await ixcUpdateClient.put(`/cliente_contrato/${contractId}`, payload);
-
-        if (response.data.type !== 'success') {
-            console.error('[CONTRACT] Erro IXC ao excluir cartão:', response.data);
-            throw new Error(JSON.stringify({ ...response.data, payload_sent: payload }));
-        }
-
-        return response.data;
+        return await atualizarContratoComFallback(contractId, payloadParcial, payloadCompleto, 'remoção de cartão recorrente');
     } catch (error: any) {
-        console.error('IXC deleteRecurringCard error:', error.response?.data || error.message);
+        console.error('IXC deleteRecurringCard error:', descreverErroSeguro(error.response?.data || error.message));
         throw error;
     }
 }

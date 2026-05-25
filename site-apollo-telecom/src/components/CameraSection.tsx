@@ -1,5 +1,4 @@
-import { Moon, Radio, Mic, Video, Shield, Smartphone, ArrowRight } from 'lucide-react';
-import Image from 'next/image';
+import { Mic, Moon, Radio, Shield, Smartphone, Video } from 'lucide-react';
 
 export function CameraSection() {
     const features = [

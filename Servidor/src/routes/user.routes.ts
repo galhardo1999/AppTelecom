@@ -21,7 +21,7 @@ userRoutes.get('/', withErrorHandler(
     async (c) => {
         const user = c.get('user') as JWTPayload;
 
-        const client = await ixcService.findClientByEmail(user.email);
+        const client = await ixcService.findClientById(user.userId);
 
         if (!client) {
             return c.json({ error: 'Usuário não encontrado' }, 404);

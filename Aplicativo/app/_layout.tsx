@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, LogBox, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css'; // Importar estilos globais do NativeWind
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ContractProvider } from '../src/context/ContractContext';
@@ -33,7 +34,7 @@ function RootNavigator() {
       // Se usuário não está logado e acessa dashboard, ir para login
       router.replace('/');
     }
-  }, [user, isLoading, segments]);
+  }, [user, isLoading, segments, router]);
 
   useEffect(() => {
     // Garantir que a splash screen fique visível por pelo menos 2.5 segundos
@@ -55,8 +56,8 @@ function RootNavigator() {
       <View className="flex-1 justify-center items-center bg-white">
         <View className="flex-1 justify-center items-center">
           <Image
-            source={require('../assets/iconeaplicativo.png')}
-            style={{ width: 200, height: 100 }}
+            source={require('../assets/logo.png')}
+            style={{ width: 240, height: 92 }}
             resizeMode="contain"
           />
         </View>
@@ -91,8 +92,6 @@ function RootNavigator() {
   );
 }
 
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -106,5 +105,3 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
-

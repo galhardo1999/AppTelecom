@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, ScrollView, View, Text, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Dimensions, ScrollView, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import api from '../services/api';
+import { logger } from '../utils/logger';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Altura calculada para imagens 16:9 considerando padding lateral de 48px
@@ -39,7 +40,7 @@ export function AdBanner({ cityId }: AdBannerProps) {
                 const response = await api.get<BannerResponse>(`/cities/${cityId}/banners`);
                 setBanners(response.data.banners || []);
             } catch (error) {
-                console.error('Erro ao buscar banners:', error);
+                logger.error('Erro ao buscar banners:', error);
                 setBanners([]);
             } finally {
                 setLoading(false);
@@ -57,7 +58,7 @@ export function AdBanner({ cityId }: AdBannerProps) {
             setCurrentIndex((prev) => {
                 const nextIndex = (prev + 1) % banners.length;
                 scrollViewRef.current?.scrollTo({
-                    x: nextIndex * SCREEN_WIDTH,
+                    x: nextIndex * BANNER_WIDTH,
                     animated: true,
                 });
                 return nextIndex;
@@ -74,7 +75,7 @@ export function AdBanner({ cityId }: AdBannerProps) {
     // Atualizar índice no scroll manual
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
-        const index = Math.round(offsetX / SCREEN_WIDTH);
+        const index = Math.round(offsetX / BANNER_WIDTH);
         setCurrentIndex(index);
     };
 

@@ -9,7 +9,7 @@ const CITY_ROUTES: Record<string, string> = {
     'Bento de Abreu': '/bento-de-abreu',
     'Guararapes': '/guararapes',
     'Panorama': '/panorama',
-    'Paulicéia': '/paulicéia',
+    'Paulicéia': '/pauliceia',
     'Santa Mercedes': '/santa-mercedes',
     'Presidente Venceslau': '/presidente-venceslau',
 };

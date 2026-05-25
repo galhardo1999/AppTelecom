@@ -3,6 +3,11 @@
  */
 
 import { ixcClient, debugLog } from './http-client.js';
+import type { IXCInvoice } from '../../types/index.js';
+import { descreverErroSeguro } from '../../utils/sanitizar.js';
+
+const LIMITE_FATURAS_ABERTAS = '50';
+const LIMITE_HISTORICO_FATURAS = '300';
 
 /**
  * Função auxiliar para extrair código PIX de diferentes formatos de resposta da API IXC
@@ -49,6 +54,30 @@ const extractPixCode = (data: any): string | null => {
     return null;
 };
 
+function classificarFatura(inv: any) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dueDate = new Date(inv.data_vencimento);
+    dueDate.setHours(0, 0, 0, 0);
+
+    let classification = inv.status;
+
+    if (['P', 'R', 'L'].includes(inv.status)) {
+        classification = 'P';
+    }
+
+    if (inv.status === 'A' && dueDate < today) {
+        classification = 'V';
+    }
+
+    return {
+        ...inv,
+        status_original: inv.status,
+        status_classificado: classification
+    };
+}
+
 /**
  * Buscar faturas em aberto
  */
@@ -59,7 +88,7 @@ export async function getOpenInvoices(clientId: string) {
             query: clientId,
             oper: '=',
             page: '1',
-            rp: '50',
+            rp: LIMITE_FATURAS_ABERTAS,
             sortname: 'fn_areceber.data_vencimento',
             sortorder: 'asc',
             grid_param: JSON.stringify([{ "TB": "fn_areceber.status", "OP": "=", "P": "A" }])
@@ -67,7 +96,27 @@ export async function getOpenInvoices(clientId: string) {
 
         return response.data?.registros || [];
     } catch (error) {
-        console.error('IXC getOpenInvoices error:', error);
+        console.error('IXC getOpenInvoices error:', descreverErroSeguro(error));
+        throw error;
+    }
+}
+
+/**
+ * Buscar uma fatura por ID para validação de propriedade.
+ */
+export async function getInvoiceById(invoiceId: string): Promise<IXCInvoice | null> {
+    try {
+        const response = await ixcClient.post('/fn_areceber', {
+            qtype: 'fn_areceber.id',
+            query: invoiceId,
+            oper: '=',
+            page: '1',
+            rp: '1'
+        });
+
+        return response.data?.registros?.[0] || null;
+    } catch (error) {
+        console.error('IXC getInvoiceById error:', descreverErroSeguro(error));
         throw error;
     }
 }
@@ -80,11 +129,7 @@ export async function getAllInvoices(clientId: string, status?: 'A' | 'P' | 'V')
     try {
         const gridParams: any[] = [];
 
-        if (status === 'P') {
-            gridParams.push({ "TB": "fn_areceber.status", "OP": "!=", "P": "C" });
-            gridParams.push({ "TB": "fn_areceber.status", "OP": "!=", "P": "R" });
-            gridParams.push({ "TB": "fn_areceber.status", "OP": "=", "P": "P" });
-        } else if (status) {
+        if (status === 'A') {
             gridParams.push({ "TB": "fn_areceber.status", "OP": "=", "P": status });
         }
 
@@ -93,7 +138,7 @@ export async function getAllInvoices(clientId: string, status?: 'A' | 'P' | 'V')
             query: clientId,
             oper: '=',
             page: '1',
-            rp: '200000',
+            rp: LIMITE_HISTORICO_FATURAS,
             sortname: 'fn_areceber.data_vencimento',
             sortorder: 'desc',
             ...(gridParams.length > 0 && { grid_param: JSON.stringify(gridParams) })
@@ -101,34 +146,15 @@ export async function getAllInvoices(clientId: string, status?: 'A' | 'P' | 'V')
 
         const invoices = response.data?.registros || [];
 
-        // Classificar faturas por status para conveniência do frontend
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const classificados = invoices.map(classificarFatura);
 
-        return invoices.map((inv: any) => {
-            const dueDate = new Date(inv.data_vencimento);
-            dueDate.setHours(0, 0, 0, 0);
+        if (status) {
+            return classificados.filter((inv: any) => inv.status_classificado === status);
+        }
 
-            let classification = inv.status;
-
-            // Normalizar status de pagamento (R = Recebido, L = Liquidado -> P = Pago)
-            if (['R', 'L'].includes(inv.status)) {
-                classification = 'P';
-            }
-
-            // Se status é 'A' (Aberto) mas passou da data de vencimento, marcar como vencido
-            if (inv.status === 'A' && dueDate < today) {
-                classification = 'V';
-            }
-
-            return {
-                ...inv,
-                status_original: inv.status,
-                status_classificado: classification
-            };
-        });
+        return classificados;
     } catch (error) {
-        console.error('IXC getAllInvoices error:', error);
+        console.error('IXC getAllInvoices error:', descreverErroSeguro(error));
         throw error;
     }
 }
@@ -138,22 +164,10 @@ export async function getAllInvoices(clientId: string, status?: 'A' | 'P' | 'V')
  */
 export async function getPaidInvoices(clientId: string) {
     try {
-        const allResponse = await ixcClient.post('/fn_areceber', {
-            qtype: 'fn_areceber.id_cliente',
-            query: clientId,
-            oper: '=',
-            rp: '200000',
-            sortname: 'fn_areceber.data_vencimento',
-            sortorder: 'desc'
-        });
-
-        const allInvoices = allResponse.data?.registros || [];
-
-        const paidStatuses = ['P', 'R', 'L'];
+        const allInvoices = await getAllInvoices(clientId);
         const paidInvoices = allInvoices.filter((inv: any) => {
-            const isPaid = paidStatuses.includes(inv.status);
             const hasPaymentDate = inv.data_pagamento && inv.data_pagamento !== '0000-00-00';
-            return isPaid || hasPaymentDate;
+            return inv.status_classificado === 'P' || hasPaymentDate;
         });
 
         // Ordenar por data de pagamento (mais recente primeiro)
@@ -165,11 +179,10 @@ export async function getPaidInvoices(clientId: string) {
 
         return paidInvoices.map((inv: any) => ({
             ...inv,
-            status_original: inv.status,
             status_classificado: 'P'
         }));
     } catch (error) {
-        console.error('IXC getPaidInvoices error:', error);
+        console.error('IXC getPaidInvoices error:', descreverErroSeguro(error));
         throw error;
     }
 }
@@ -189,7 +202,7 @@ export async function getPixCode(invoiceId: string): Promise<string | null> {
             boletos: invoiceId
         });
 
-        debugLog('PIX', 'gerar_pix response:', JSON.stringify(response.data));
+        debugLog('PIX', 'gerar_pix response received');
         const pixCode = extractPixCode(response.data);
         if (pixCode) return pixCode;
     } catch (error: any) {
@@ -203,7 +216,7 @@ export async function getPixCode(invoiceId: string): Promise<string | null> {
             id_areceber: invoiceId
         });
 
-        debugLog('PIX', 'getpix_cob response:', JSON.stringify(response.data));
+        debugLog('PIX', 'getpix_cob response received');
         const pixCode = extractPixCode(response.data);
         if (pixCode) return pixCode;
     } catch (error: any) {
@@ -217,7 +230,7 @@ export async function getPixCode(invoiceId: string): Promise<string | null> {
             id_areceber: invoiceId
         });
 
-        debugLog('PIX', 'get_pix response:', JSON.stringify(response.data));
+        debugLog('PIX', 'get_pix response received');
         const pixCode = extractPixCode(response.data);
         if (pixCode) return pixCode;
     } catch (error: any) {
@@ -235,7 +248,7 @@ export async function getPixCode(invoiceId: string): Promise<string | null> {
             rp: '1'
         });
 
-        debugLog('PIX', 'fn_areceber response:', JSON.stringify(response.data));
+        debugLog('PIX', 'fn_areceber response received');
 
         if (response.data?.registros?.[0]) {
             const invoice = response.data.registros[0];
@@ -250,7 +263,7 @@ export async function getPixCode(invoiceId: string): Promise<string | null> {
             }
         }
     } catch (error) {
-        console.error('[PIX] Direct invoice lookup failed:', error);
+        console.error('[PIX] Direct invoice lookup failed:', descreverErroSeguro(error));
     }
 
     // Method 5: get_boleto com opção PIX
@@ -264,7 +277,7 @@ export async function getPixCode(invoiceId: string): Promise<string | null> {
             tipo_boleto: 'pix'
         });
 
-        debugLog('PIX', 'get_boleto PIX response:', JSON.stringify(response.data));
+        debugLog('PIX', 'get_boleto PIX response received');
         const pixCode = extractPixCode(response.data);
         if (pixCode) return pixCode;
     } catch (error: any) {
@@ -297,7 +310,7 @@ export async function getBoleto(boletoId: string): Promise<string | null> {
         }
         return null;
     } catch (error) {
-        console.error('IXC getBoleto error:', error);
+        console.error('IXC getBoleto error:', descreverErroSeguro(error));
         throw error;
     }
 }

@@ -3,9 +3,6 @@
 # dependencies
 node_modules/
 
-# lock file (usando npm como gerenciador principal)
-bun.lock
-
 # Expo
 .expo/
 dist/
